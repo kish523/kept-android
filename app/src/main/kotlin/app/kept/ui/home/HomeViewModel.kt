@@ -184,7 +184,8 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     fun checkForUpdate() = container.appScope.launch { container.updater.checkAndDownload() }
     fun installUpdate() = container.updater.install()
     fun canInstallUpdates() = container.updater.canRequestInstalls()
-    fun installPermissionIntent() = container.updater.installPermissionIntent()
+    /** The "Allow" button: opens Android's switch, and the install continues when the user comes back. */
+    fun installPermissionIntent() = container.updater.allowInstallsThenInstall()
 
     fun notificationsAllowed() = container.reminderNotifications.canPost()
     var askedForNotifications: Boolean

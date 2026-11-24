@@ -30,7 +30,19 @@ class AppPrefs(context: Context) {
         get() = prefs.getBoolean(ASKED_NOTIFICATIONS, false)
         set(v) = prefs.edit().putBoolean(ASKED_NOTIFICATIONS, v).apply()
 
+    /** The newest update build we've already opened Android's install prompt for (phones without silent installs). */
+    var promptedUpdateBuild: Int
+        get() = prefs.getInt(PROMPTED_BUILD, 0)
+        set(v) = prefs.edit().putInt(PROMPTED_BUILD, v).apply()
+
+    /** The user went to allow "Install unknown apps": carry on installing when they come back. */
+    var installAfterPermission: Boolean
+        get() = prefs.getBoolean(INSTALL_AFTER_PERMISSION, false)
+        set(v) = prefs.edit().putBoolean(INSTALL_AFTER_PERMISSION, v).apply()
+
     private companion object {
+        const val PROMPTED_BUILD = "prompted_update_build"
+        const val INSTALL_AFTER_PERMISSION = "install_after_permission"
         const val AUTO_UPDATE = "auto_update"
         const val LAST_CHECK = "last_update_check"
         const val LAST_SEEN = "last_seen_version_code"

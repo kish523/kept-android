@@ -1,12 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Android 12+. Cloud backup keeps the database and settings; receipt images are too large for
-     Auto Backup's quota and go in the encrypted .keptbackup file instead. Phone-to-phone transfer
-     copies everything. When vault encryption ships, exclude the database here too: Keystore keys
-     don't move to a new phone, so an encrypted database restored without its key is unreadable. -->
+<!-- Android 12+.
+     Cloud backup: nothing. Receipts are private by design, so Kept never copies them to Google Drive.
+     (A local, encrypted .keptbackup export is planned for people who want a copy.)
+     Phone-to-phone transfer (cable or Wi-Fi, directly between the two phones): everything, so moving
+     to a new phone keeps your receipts. When vault encryption ships, exclude the database here too:
+     Keystore keys don't move, so an encrypted database restored without its key is unreadable. -->
 <data-extraction-rules>
     <cloud-backup>
-        <include domain="database" path="." />
-        <include domain="sharedpref" path="." />
+        <exclude domain="root" path="." />
+        <exclude domain="file" path="." />
+        <exclude domain="database" path="." />
+        <exclude domain="sharedpref" path="." />
+        <exclude domain="external" path="." />
     </cloud-backup>
     <device-transfer>
         <include domain="database" path="." />

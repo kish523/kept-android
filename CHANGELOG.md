@@ -18,11 +18,19 @@
   or every window closed. Receipts with an open return or warranty are never touched.
 
 **Updates**
-- Kept updates itself: once a day it checks for a new version and installs it, usually when you
-  leave the app. The first time, Android asks you to allow it once.
+- Kept updates itself: once a day it checks for a new version and downloads it.
+- Android 12 and later: it installs in the background, usually when you leave the app. The first
+  time, Android asks you to allow it once.
+- Android 8 to 11: the next time you open Kept, Android asks you to tap **Install**.
 - After an update, this "What's new" screen shows what changed. Find it again in Settings.
 - Turn automatic updates off, or check now, in **Settings › Updates**.
 - Updates only ask GitHub for a newer version. Nothing about your receipts leaves your phone.
+
+**Privacy**
+- Kept no longer copies your receipts to Google Drive backup. Moving to a new phone with Android's
+  phone-to-phone transfer still brings them along.
+- Kept is now a signed release build, so its data can't be read out over a USB cable.
+- All of Kept's code is public, so anyone can check how it treats your data.
 
 ## 0.2.0: the redesign
 

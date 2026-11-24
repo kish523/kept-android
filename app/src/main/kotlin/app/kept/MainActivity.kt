@@ -58,6 +58,11 @@ class MainActivity : ComponentActivity() {
         isInForeground = true
     }
 
+    override fun onResume() {
+        super.onResume()
+        (application as KeptApplication).container.updater.onAppInForeground()
+    }
+
     override fun onStop() {
         super.onStop()
         isInForeground = false

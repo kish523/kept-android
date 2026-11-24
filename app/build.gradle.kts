@@ -20,28 +20,33 @@ android {
         // is newer than the last; that's also how the in-app updater compares builds.
         versionCode = (project.findProperty("buildNumber") as String?)?.toInt() ?: 3
         versionName = "0.2.1"
-        // Public repo that holds only release builds and notes (the source repo is private).
-        buildConfigField("String", "UPDATE_REPO", "\"kish523/kept-releases\"")
+        // The public repo whose releases the in-app updater reads.
+        buildConfigField("String", "UPDATE_REPO", "\"kish523/kept-android\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     signingConfigs {
-        // A fixed debug key, so every test build installs over the previous one and keeps your receipts.
-        // (CI runners would otherwise make a new random key per run, and Android refuses that update.)
-        // This is only for test builds; a Play Store release gets its own private key.
-        getByName("debug") {
-            storeFile = file("debug.keystore")
-            storePassword = "android"
-            keyAlias = "androiddebugkey"
-            keyPassword = "android"
+        // The release key lives only in CI secrets (KEPT_KEYSTORE_FILE and friends), never in the repo.
+        // Every published build is signed with it, so each one updates the last. Local builds without
+        // the key fall back to unsigned release / normal debug signing.
+        val keystore = System.getenv("KEPT_KEYSTORE_FILE")?.let(::file)?.takeIf { it.exists() }
+        if (keystore != null) {
+            create("kept") {
+                storeFile = keystore
+                storePassword = System.getenv("KEPT_KEYSTORE_PASSWORD")
+                keyAlias = System.getenv("KEPT_KEY_ALIAS") ?: "kept"
+                keyPassword = System.getenv("KEPT_KEYSTORE_PASSWORD")
+            }
         }
     }
 
     buildTypes {
         release {
-            isMinifyEnabled = true
-            isShrinkResources = true
-            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+            // What people install: not debuggable, so nothing can read Kept's data over USB.
+            // Code shrinking stays off until it's been tested on real phones (Room, ML Kit, Compose).
+            isMinifyEnabled = false
+            isShrinkResources = false
+            signingConfig = signingConfigs.findByName("kept")
         }
     }
 

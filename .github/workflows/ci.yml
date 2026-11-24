@@ -12,6 +12,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 40
+    env:
+      # The release key lives only in these secrets (never in the repo). See docs/DEVELOPING.md.
+      KEPT_KEYSTORE_BASE64: ${{ secrets.KEPT_KEYSTORE_BASE64 }}
+      KEPT_KEYSTORE_PASSWORD: ${{ secrets.KEPT_KEYSTORE_PASSWORD }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,11 +28,20 @@ jobs:
         with:
           gradle-version: "8.14.3"
 
-      - name: Test parser and build app
+      - name: Unpack the release key
+        run: |
+          if [ -n "$KEPT_KEYSTORE_BASE64" ]; then
+            echo "$KEPT_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/kept-release.p12"
+            echo "KEPT_KEYSTORE_FILE=$RUNNER_TEMP/kept-release.p12" >> "$GITHUB_ENV"
+          else
+            echo "::warning::KEPT_KEYSTORE_BASE64 is not set: the app is built and tested but not published."
+          fi
+
+      - name: Test and build
         run: |
           set -o pipefail
           # The run number is the build number (versionCode): it only grows, so each build is newer.
-          gradle :core:parser:test :app:testDebugUnitTest :app:assembleDebug -PbuildNumber=${{ github.run_number }} --console=plain 2>&1 | tee build-log.txt
+          gradle :core:parser:test :app:testDebugUnitTest :app:assembleRelease -PbuildNumber=${{ github.run_number }} --console=plain 2>&1 | tee build-log.txt
 
       - name: Publish build log
         if: always()
@@ -45,29 +58,25 @@ jobs:
           git add . && git commit -qm "Build log for ${{ github.sha }}"
           git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git" ci-logs
 
-      - name: Publish app for phone install
-        if: success()
+      - name: Publish release
+        if: success() && env.KEPT_KEYSTORE_FILE != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Token for the public kish523/kept-releases repo, which the app's updater reads.
-          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
-          APK="kept-$VERSION-build-${{ github.run_number }}.apk"
-          cp app/build/outputs/apk/debug/app-debug.apk "$APK"
-          # Release notes: this version's section of CHANGELOG.md, then how to install.
-          awk -v v="## $VERSION" '$0 ~ "^## " { if (p) exit; p = (index($0, v) == 1) } p' CHANGELOG.md > notes.md
-          printf '\n---\nDebug build for testing. Tap the .apk below to download, then open it to install.\n' >> notes.md
+          APK="kept-$VERSION.apk"
+          cp app/build/outputs/apk/release/app-release.apk "$APK"
+          # Notes for people installing Kept: the intro, this version's changelog section, how to install.
+          awk -v v="## $VERSION" '$0 ~ "^## " { if (p) exit; if (index($0, v) == 1) { p = 1; next } } p' CHANGELOG.md > changes.md
+          python3 - "$VERSION" "$APK" <<'PY'
+          import sys
+          version, apk = sys.argv[1], sys.argv[2]
+          notes = open(".github/release-notes.md").read()
+          notes = notes.replace("__VERSION__", version).replace("__APK__", apk).replace("__CHANGES__", open("changes.md").read().strip())
+          open("notes.md", "w").write(notes)
+          PY
+          # The tag carries the build number, which the in-app updater compares.
           gh release create "v$VERSION-build-${{ github.run_number }}" "$APK" \
-            --title "Kept $VERSION (test build ${{ github.run_number }})" \
+            --title "Kept $VERSION" \
             --notes-file notes.md \
-            --prerelease
-          # Also publish to the public releases repo, so installed apps can find and fetch the update.
-          if [ -n "$RELEASES_TOKEN" ]; then
-            GH_TOKEN="$RELEASES_TOKEN" gh release create "v$VERSION-build-${{ github.run_number }}" "$APK" \
-              --repo kish523/kept-releases \
-              --title "Kept $VERSION (build ${{ github.run_number }})" \
-              --notes-file notes.md
-          else
-            echo "::warning::RELEASES_TOKEN is not set, so this build wasn't published to kish523/kept-releases (in-app updates won't see it)."
-          fi
+            --latest

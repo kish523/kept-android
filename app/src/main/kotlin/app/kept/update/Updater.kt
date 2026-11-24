@@ -58,9 +58,55 @@ class Updater(private val context: Context, private val prefs: AppPrefs) {
 
     /** Called when the app opens: at most every few hours, quietly. */
     suspend fun checkOnLaunch() {
-        if (!prefs.autoUpdate.value) return
-        if (System.currentTimeMillis() - prefs.lastUpdateCheckMillis < LAUNCH_CHECK_INTERVAL_MS) return
-        checkAndDownload()
+        restore()
+        if (prefs.autoUpdate.value && System.currentTimeMillis() - prefs.lastUpdateCheckMillis >= LAUNCH_CHECK_INTERVAL_MS) {
+            checkAndDownload()
+        }
+        if (MainActivity.isInForeground) onAppInForeground()
+    }
+
+    /**
+     * An update downloaded before a restart is still on disk: pick it up again instead of re-downloading.
+     * (Android 11 restarts Kept when you allow "Install unknown apps", so this matters there.)
+     */
+    suspend fun restore() = lock.withLock {
+        if (_state.value !is UpdateState.Idle) return@withLock
+        withContext(Dispatchers.IO) {
+            val files = dir.listFiles { f -> f.name.startsWith("kept-") && f.name.endsWith(".apk") }.orEmpty()
+            files.filter { buildOf(it) <= BuildConfig.VERSION_CODE }.forEach { it.delete() } // already installed
+            val newest = files.filter { buildOf(it) > BuildConfig.VERSION_CODE }.maxByOrNull { buildOf(it) } ?: return@withContext
+            val archive = context.packageManager.getPackageArchiveInfo(newest.path, 0)
+            val info = UpdateInfo(archive?.versionName ?: "update", buildOf(newest), "", newest.length(), "")
+            runCatching { verify(newest, info) }.onSuccess { _state.value = UpdateState.Ready(info) }
+        }
+    }
+
+    private fun buildOf(f: File): Int = f.name.removePrefix("kept-").removeSuffix(".apk").toIntOrNull() ?: 0
+
+    /**
+     * Kept is open. Phones that can't install silently (Android 8–11, or before Kept's first
+     * self-update) get Android's install prompt once per new build, and right away after the user
+     * allowed "Install unknown apps" for Kept.
+     */
+    fun onAppInForeground() {
+        val ready = _state.value as? UpdateState.Ready ?: return
+        if (!canRequestInstalls()) return
+        when {
+            prefs.installAfterPermission -> {
+                prefs.installAfterPermission = false
+                install()
+            }
+            prefs.autoUpdate.value && !canInstallSilently() && prefs.promptedUpdateBuild < ready.info.build -> {
+                prefs.promptedUpdateBuild = ready.info.build
+                install()
+            }
+        }
+    }
+
+    /** Opens the "Install unknown apps" switch for Kept, and installs as soon as the user comes back. */
+    fun allowInstallsThenInstall(): Intent {
+        prefs.installAfterPermission = true
+        return installPermissionIntent()
     }
 
     /** "Check for updates" in Settings, the daily job, and launch. Ends in Ready, UpToDate or Failed. */
