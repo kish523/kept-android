@@ -18,7 +18,8 @@ import java.util.UUID
 
 // Money is always integer minor units + ISO 4217 currency. Deadlines are plain local dates.
 
-enum class ReceiptStatus { DRAFT, NEEDS_REVIEW, ACTIVE, ARCHIVED }
+/** TRASHED: deleted with Undo still possible; removed for good when the Undo message goes, or on next start. */
+enum class ReceiptStatus { DRAFT, NEEDS_REVIEW, ACTIVE, ARCHIVED, TRASHED }
 enum class CaptureSource { CAMERA, PHOTOS, PDF, SHARE_SHEET }
 enum class ItemState { KEPT, RETURNING, RETURNED, CLAIMED }
 enum class AttachmentKind { PAGE_IMAGE, ORIGINAL_PDF }
@@ -188,4 +189,21 @@ data class DeadlineRow(
     val noReturns: Boolean,
     val returnResolved: Boolean,
     val state: ItemState,
+)
+
+/** Everything a reminder notification needs, in one row. */
+data class ReminderDetails(
+    @Embedded val reminder: ReminderEntity,
+    val itemName: String,
+    val receiptId: String,
+    val merchantName: String?,
+    val itemState: ItemState,
+    val returnResolved: Boolean,
+    val receiptStatus: ReceiptStatus,
+)
+
+/** An item with its receipt's status, for "clean up finished receipts". */
+data class ItemWithStatus(
+    @Embedded val item: ItemEntity,
+    val receiptStatus: ReceiptStatus,
 )

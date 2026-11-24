@@ -16,8 +16,12 @@ android {
         applicationId = "app.kept"
         minSdk = 26 // Android 8.0
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        // CI passes its run number (-PbuildNumber=N), which only grows, so every published build
+        // is newer than the last; that's also how the in-app updater compares builds.
+        versionCode = (project.findProperty("buildNumber") as String?)?.toInt() ?: 3
+        versionName = "0.2.1"
+        // Public repo that holds only release builds and notes (the source repo is private).
+        buildConfigField("String", "UPDATE_REPO", "\"kish523/kept-releases\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -68,6 +72,14 @@ kotlin {
     compilerOptions { jvmTarget.set(JvmTarget.JVM_17) }
 }
 
+// The changelog ships inside the app, so "What's new" works offline right after an update.
+val bundleChangelog = tasks.register<Copy>("bundleChangelog") {
+    from(rootProject.file("CHANGELOG.md"))
+    into(layout.buildDirectory.dir("generated/changelog"))
+}
+android.sourceSets.getByName("main").assets.srcDir(layout.buildDirectory.dir("generated/changelog"))
+tasks.named("preBuild") { dependsOn(bundleChangelog) }
+
 // Exported schemas double as debug-only assets, so migration tests run against the real old schema.
 // (Release builds don't include them.)
 android.sourceSets.getByName("debug").assets.srcDir("$projectDir/schemas")
@@ -98,6 +110,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     implementation(libs.haze)
+    implementation(libs.androidx.work.runtime)
 
     implementation(libs.mlkit.document.scanner)
     implementation(libs.mlkit.text.recognition)
@@ -107,6 +120,7 @@ dependencies {
     testImplementation(libs.robolectric)
     testImplementation(libs.androidx.test.junit)
     testImplementation(libs.androidx.room.testing)
+    testImplementation(libs.androidx.work.testing)
     testImplementation(platform(libs.androidx.compose.bom))
     testImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)

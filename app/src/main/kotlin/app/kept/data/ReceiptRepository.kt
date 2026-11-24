@@ -19,6 +19,7 @@ import app.kept.data.db.ReminderEntity
 import app.kept.data.db.ReminderStatus
 import app.kept.data.files.AttachmentStore
 import app.kept.data.files.StoredFile
+import app.kept.reminders.ReminderScheduler
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -50,6 +51,7 @@ data class ReviewedItem(val name: String, val quantity: Int, val totalMinor: Lon
 class ReceiptRepository(
     private val db: KeptDatabase,
     private val files: AttachmentStore,
+    private val scheduler: ReminderScheduler = ReminderScheduler.None,
 ) {
     /**
      * Step 1 of every capture, before any reading: copy the files into app storage and write a DRAFT
@@ -143,6 +145,7 @@ class ReceiptRepository(
         val deduped = reminders.distinctBy { Triple(it.kind, it.dueDate, it.fireAt) }
 
         val ocrText = db.attachmentDao().forReceipt(receiptId).mapNotNull { it.ocrText }.joinToString("\n")
+        val oldReminders = db.reminderDao().forReceipt(receiptId)
         db.withTransaction {
             db.receiptDao().update(
                 existing.copy(
@@ -172,45 +175,93 @@ class ReceiptRepository(
                 ),
             )
         }
-        // TODO(reminders phase): hand `deduped` to the AlarmScheduler (inexact, idle-safe alarms).
+        scheduler.cancel(oldReminders)
+        scheduler.sync()
         return deduped
     }
 
     /** "Keeping it": the return window no longer matters. Its return reminders are cancelled; the warranty stays. */
-    suspend fun markKeeping(itemId: String) = db.withTransaction {
-        db.itemDao().setReturnResolved(itemId, true)
-        db.reminderDao().moveStatus(itemId, listOf(ReminderKind.RETURN), ACTIVE_REMINDERS, ReminderStatus.CANCELLED)
-        // TODO(reminders phase): cancel the matching OS alarms.
+    suspend fun markKeeping(itemId: String) {
+        val returns = db.reminderDao().forItem(itemId).filter { it.kind == ReminderKind.RETURN }
+        db.withTransaction {
+            db.itemDao().setReturnResolved(itemId, true)
+            db.reminderDao().moveStatus(itemId, listOf(ReminderKind.RETURN), ACTIVE_REMINDERS, ReminderStatus.CANCELLED)
+        }
+        scheduler.cancel(returns)
     }
 
-    suspend fun undoKeeping(itemId: String) = db.withTransaction {
-        db.itemDao().setReturnResolved(itemId, false)
-        db.reminderDao().moveStatus(itemId, listOf(ReminderKind.RETURN), listOf(ReminderStatus.CANCELLED), ReminderStatus.PENDING)
+    suspend fun undoKeeping(itemId: String) {
+        db.withTransaction {
+            db.itemDao().setReturnResolved(itemId, false)
+            db.reminderDao().moveStatus(itemId, listOf(ReminderKind.RETURN), listOf(ReminderStatus.CANCELLED), ReminderStatus.PENDING)
+        }
+        scheduler.sync()
     }
 
     /** "Returned it": the item leaves Home and every reminder for it stops. Returns the state to restore on undo. */
-    suspend fun markReturned(itemId: String): ItemState = db.withTransaction {
-        val before = db.itemDao().get(itemId)?.state ?: ItemState.KEPT
-        db.itemDao().setState(itemId, ItemState.RETURNED)
-        db.reminderDao().moveStatus(itemId, ReminderKind.entries, ACTIVE_REMINDERS, ReminderStatus.CANCELLED)
-        before
+    suspend fun markReturned(itemId: String): ItemState {
+        val reminders = db.reminderDao().forItem(itemId)
+        val before = db.withTransaction {
+            val before = db.itemDao().get(itemId)?.state ?: ItemState.KEPT
+            db.itemDao().setState(itemId, ItemState.RETURNED)
+            db.reminderDao().moveStatus(itemId, ReminderKind.entries, ACTIVE_REMINDERS, ReminderStatus.CANCELLED)
+            before
+        }
+        scheduler.cancel(reminders)
+        return before
     }
 
-    suspend fun undoReturned(itemId: String, restore: ItemState) = db.withTransaction {
-        db.itemDao().setState(itemId, restore)
-        val item = db.itemDao().get(itemId)
-        val kinds = if (item?.returnResolved == true) listOf(ReminderKind.WARRANTY) else ReminderKind.entries
-        db.reminderDao().moveStatus(itemId, kinds, listOf(ReminderStatus.CANCELLED), ReminderStatus.PENDING)
+    suspend fun undoReturned(itemId: String, restore: ItemState) {
+        db.withTransaction {
+            db.itemDao().setState(itemId, restore)
+            val item = db.itemDao().get(itemId)
+            val kinds = if (item?.returnResolved == true) listOf(ReminderKind.WARRANTY) else ReminderKind.entries
+            db.reminderDao().moveStatus(itemId, kinds, listOf(ReminderStatus.CANCELLED), ReminderStatus.PENDING)
+        }
+        scheduler.sync()
     }
+
+    /**
+     * Deletes with Undo: the receipt disappears everywhere and its reminders stop, but nothing is erased
+     * until [purgeTrash]. Returns the status to put back on undo.
+     */
+    suspend fun trash(receiptId: String): ReceiptStatus? {
+        val receipt = db.receiptDao().get(receiptId) ?: return null
+        if (receipt.status == ReceiptStatus.TRASHED) return null
+        db.receiptDao().setStatus(receiptId, ReceiptStatus.TRASHED)
+        scheduler.cancel(db.reminderDao().forReceipt(receiptId))
+        return receipt.status
+    }
+
+    suspend fun restore(receiptId: String, status: ReceiptStatus) {
+        db.receiptDao().setStatus(receiptId, status)
+        scheduler.sync()
+    }
+
+    /** Erases every trashed receipt for good: rows, photos, search entry. Run at start and daily. */
+    suspend fun purgeTrash() {
+        db.receiptDao().idsWithStatus(ReceiptStatus.TRASHED).forEach { delete(it) }
+    }
+
+    /** Erases these receipts for good, but only if they're still trashed (not restored by Undo). */
+    suspend fun purge(receiptIds: Collection<String>) {
+        receiptIds.forEach { id -> if (db.receiptDao().get(id)?.status == ReceiptStatus.TRASHED) delete(id) }
+    }
+
+    /** Saved receipts where nothing is left to track: every item returned, or all its windows closed. */
+    suspend fun finishedReceiptIds(today: LocalDate = LocalDate.now()): List<String> =
+        db.itemDao().withReceiptStatus().map { it.item }.groupBy { it.receiptId }
+            .filterValues { items -> isFinished(items, today) }
+            .keys.toList()
 
     /** Permanently deletes a receipt: rows (cascade), files and search entry. */
     suspend fun delete(receiptId: String) {
+        scheduler.cancel(db.reminderDao().forReceipt(receiptId))
         db.withTransaction {
             db.searchDao().deleteForReceipt(receiptId)
             db.receiptDao().delete(receiptId)
         }
         files.deleteReceipt(receiptId)
-        // TODO(reminders phase): cancel this receipt's OS alarms and calendar events.
     }
 
     /** Prefix search on every word the user typed: "sony head" finds "SONY WH-1000XM6 HEADPHONES". */
@@ -219,6 +270,15 @@ class ReceiptRepository(
         if (words.isEmpty()) return emptyList()
         return db.searchDao().search(words.joinToString(" ") { "$it*" })
     }
+}
+
+/** True when no item on the receipt has anything open: returned, or every window closed. Lifetime warranties stay. */
+fun isFinished(items: List<ItemEntity>, today: LocalDate): Boolean = items.isNotEmpty() && items.all { i ->
+    i.state == ItemState.RETURNED || (
+        !i.lifetimeWarranty &&
+            (i.returnBy == null || i.noReturns || i.returnResolved || i.returnBy.isBefore(today)) &&
+            (i.warrantyEnds == null || i.warrantyEnds.isBefore(today))
+        )
 }
 
 private val ACTIVE_REMINDERS = listOf(ReminderStatus.PENDING, ReminderStatus.HANDED_TO_OS, ReminderStatus.SNOOZED)

@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.2.1: reminders, deleting and updates
+
+**Reminders**
+- Kept now reminds you: at 9:00, 7, 3 and 1 day before a return window closes, and 30 and 7 days
+  before a warranty ends.
+- Answer right from the notification: **Keeping it**, **Returned it**, or **Remind me tomorrow**.
+- Tap a reminder to open the receipt.
+- Reminders survive restarts, app updates and travel across time zones, and a daily check re-arms
+  any that went missing.
+- Kept asks to send notifications after you save your first receipt. Change it any time in Settings.
+
+**Deleting receipts**
+- Swipe a receipt left on Home to delete it, or use the bin on the receipt screen.
+- Every delete has **Undo**. Nothing is erased until the message goes away.
+- **Settings › Clean up finished receipts** deletes the ones with nothing left to track: returned,
+  or every window closed. Receipts with an open return or warranty are never touched.
+
+**Updates**
+- Kept updates itself: once a day it checks for a new version and installs it, usually when you
+  leave the app. The first time, Android asks you to allow it once.
+- After an update, this "What's new" screen shows what changed. Find it again in Settings.
+- Turn automatic updates off, or check now, in **Settings › Updates**.
+- Updates only ask GitHub for a newer version. Nothing about your receipts leaves your phone.
+
 ## 0.2.0: the redesign
 
 **New look**

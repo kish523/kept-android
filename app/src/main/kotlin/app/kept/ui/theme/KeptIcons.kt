@@ -56,6 +56,9 @@ object KeptIcons {
     val ReturnArrow by lazy { icon("return", "M9,14L4,9l5,-5", "M4,9h10.5a5.5,5.5 0,0 1,0 11H11") }
     val Shield by lazy { icon("shield", "M12,3L5,6v5c0,4.5 3,8 7,10 4,-2 7,-5.5 7,-10V6l-7,-3z", "M9,12l2,2 4,-4") }
     val Bell by lazy { icon("bell", "M6,16v-5a6,6 0,0 1,12 0v5l1.5,2h-15L6,16z", "M10,20.5a2,2 0,0 0,4 0") }
+    val Trash by lazy { icon("trash", "M4,7h16M10,11v6M14,11v6", "M6,7l1,12a2,2 0,0 0,2 2h6a2,2 0,0 0,2 -2l1,-12", "M9,7V5a1,1 0,0 1,1 -1h4a1,1 0,0 1,1 1v2") }
+    val Download by lazy { icon("download", "M12,4v11M7,10l5,5 5,-5", "M5,20h14") }
+    val Sparkle by lazy { icon("sparkle", "M12,3l1.8,5.2L19,10l-5.2,1.8L12,17l-1.8,-5.2L5,10l5.2,-1.8z", "M19,16l0.7,1.8L21.5,18.5l-1.8,0.7L19,21l-0.7,-1.8L16.5,18.5l1.8,-0.7z") }
     val Calendar by lazy {
         icon("calendar", "M6,5h12a2.5,2.5 0,0 1,2.5 2.5v10.5a2.5,2.5 0,0 1,-2.5 2.5H6a2.5,2.5 0,0 1,-2.5 -2.5V7.5A2.5,2.5 0,0 1,6 5z", "M3.5,10h17M8,3v4M16,3v4")
     }

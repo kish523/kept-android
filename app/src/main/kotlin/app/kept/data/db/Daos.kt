@@ -34,6 +34,9 @@ interface ReceiptDao {
 
     @Query("DELETE FROM receipts WHERE id = :id")
     suspend fun delete(id: String)
+
+    @Query("SELECT id FROM receipts WHERE status = :status")
+    suspend fun idsWithStatus(status: ReceiptStatus): List<String>
 }
 
 @Dao
@@ -54,6 +57,10 @@ interface ItemDao {
 
     @Query("SELECT * FROM items WHERE id = :itemId")
     suspend fun get(itemId: String): ItemEntity?
+
+    /** Items of saved receipts, for finding receipts with nothing left to track. */
+    @Query("SELECT i.*, r.status AS receiptStatus FROM items i JOIN receipts r ON r.id = i.receiptId WHERE r.status = 'ACTIVE'")
+    suspend fun withReceiptStatus(): List<ItemWithStatus>
 
     /** Active items with any deadline, nearest first. Dates are ISO text, so they sort correctly. */
     @Query(
@@ -103,6 +110,27 @@ interface ReminderDao {
     /** Moves an item's reminders of the given kinds from one set of statuses to another (cancel, or undo a cancel). */
     @Query("UPDATE reminders SET status = :to WHERE itemId = :itemId AND kind IN (:kinds) AND status IN (:from)")
     suspend fun moveStatus(itemId: String, kinds: List<ReminderKind>, from: List<ReminderStatus>, to: ReminderStatus)
+
+    @Query("SELECT * FROM reminders WHERE id = :id")
+    suspend fun get(id: String): ReminderEntity?
+
+    @Update suspend fun update(reminder: ReminderEntity)
+
+    @Query("SELECT * FROM reminders WHERE itemId IN (SELECT id FROM items WHERE receiptId = :receiptId)")
+    suspend fun forReceipt(receiptId: String): List<ReminderEntity>
+
+    @Query("SELECT * FROM reminders WHERE itemId = :itemId")
+    suspend fun forItem(itemId: String): List<ReminderEntity>
+
+    @Query(
+        """
+        SELECT rem.*, i.name AS itemName, i.receiptId AS receiptId, r.merchantName AS merchantName,
+               i.state AS itemState, i.returnResolved AS returnResolved, r.status AS receiptStatus
+        FROM reminders rem JOIN items i ON i.id = rem.itemId JOIN receipts r ON r.id = i.receiptId
+        WHERE rem.id = :id
+        """,
+    )
+    suspend fun details(id: String): ReminderDetails?
 
     /** What the alarm scheduler re-arms after boot, update or a clock change. */
     @Query("SELECT * FROM reminders WHERE status IN ('PENDING', 'HANDED_TO_OS', 'SNOOZED') ORDER BY fireAt")

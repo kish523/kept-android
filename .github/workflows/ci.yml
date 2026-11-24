@@ -27,7 +27,8 @@ jobs:
       - name: Test parser and build app
         run: |
           set -o pipefail
-          gradle :core:parser:test :app:testDebugUnitTest :app:assembleDebug --console=plain 2>&1 | tee build-log.txt
+          # The run number is the build number (versionCode): it only grows, so each build is newer.
+          gradle :core:parser:test :app:testDebugUnitTest :app:assembleDebug -PbuildNumber=${{ github.run_number }} --console=plain 2>&1 | tee build-log.txt
 
       - name: Publish build log
         if: always()
@@ -48,6 +49,8 @@ jobs:
         if: success()
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Token for the public kish523/kept-releases repo, which the app's updater reads.
+          RELEASES_TOKEN: ${{ secrets.RELEASES_TOKEN }}
         run: |
           VERSION=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
           APK="kept-$VERSION-build-${{ github.run_number }}.apk"
@@ -59,3 +62,12 @@ jobs:
             --title "Kept $VERSION (test build ${{ github.run_number }})" \
             --notes-file notes.md \
             --prerelease
+          # Also publish to the public releases repo, so installed apps can find and fetch the update.
+          if [ -n "$RELEASES_TOKEN" ]; then
+            GH_TOKEN="$RELEASES_TOKEN" gh release create "v$VERSION-build-${{ github.run_number }}" "$APK" \
+              --repo kish523/kept-releases \
+              --title "Kept $VERSION (build ${{ github.run_number }})" \
+              --notes-file notes.md
+          else
+            echo "::warning::RELEASES_TOKEN is not set, so this build wasn't published to kish523/kept-releases (in-app updates won't see it)."
+          fi

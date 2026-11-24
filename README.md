@@ -3,9 +3,9 @@
 Snap a receipt, and Kept reminds you before the return window or warranty runs out.
 Local-first: receipts stay on the phone, no account, no ads.
 
-Current version: **0.2.0**, the redesign (see [CHANGELOG.md](CHANGELOG.md)). The receipt parser is
-fully tested; the app scans, reads, checks and saves receipts, and tracks return and warranty windows.
-Reminders that actually fire, export and backup come in the next phases of the plan.
+Current version: **0.2.1** (see [CHANGELOG.md](CHANGELOG.md)). The app scans, reads, checks and saves
+receipts, reminds you before return windows close and warranties end, deletes receipts with Undo, and
+updates itself. Export and backup come next.
 
 ## Open it
 
@@ -26,9 +26,31 @@ Every push to `main` runs `.github/workflows/ci.yml` on GitHub Actions:
 1. runs the parser tests and builds the debug app;
 2. writes the result to the **`ci-logs`** branch (`status.txt`, `summary.txt`, `tail.txt`,
    `build-log.txt`) so errors can be read without the Actions screen;
-3. if the build passes, publishes a **Release** named "Kept 0.2.0 (test build N)" with the `.apk` attached.
+3. if the build passes, publishes a **Release** named "Kept <version> (test build N)" with the `.apk`
+   attached, and the same build to the public **kish523/kept-releases** repo, where the app's updater
+   finds it. The run number N is the build number (`versionCode`), so every build is newer than the last.
    Open the release on your phone, tap the `.apk`, and install it. Builds are signed with the
    committed `app/debug.keystore`, so each one installs over the last and keeps your data.
+
+### In-app updates: one-time setup
+
+This repo is private, so phones can't read its releases. Builds are also published to a small **public**
+repo that holds only APKs and release notes, never source code:
+
+1. On GitHub, create a new repository **kept-releases** under your account, set to **Public**, and tick
+   **Add a README** (a release needs at least one commit to attach to).
+2. Create a token for CI: GitHub › Settings › Developer settings › **Fine-grained tokens** › Generate new
+   token. Repository access: **Only select repositories › kept-releases**. Permissions: **Contents: Read
+   and write**. Pick an expiry you're comfortable with (it has to be renewed when it expires).
+3. In **kept-android** › Settings › Secrets and variables › **Actions** › New repository secret:
+   name `RELEASES_TOKEN`, value: the token.
+
+Without the secret, builds still publish here as before, and the log shows a warning that the
+public copy was skipped. The app checks `api.github.com/repos/kish523/kept-releases/releases` (set in
+`app/build.gradle.kts` as `UPDATE_REPO`) at most every few hours and once a day in the background,
+downloads a newer APK, checks it's Kept, newer, and signed with the same key, then installs it. On
+Android 12+ that's silent after the first self-update; the first time, and on older phones, Android
+shows one confirm dialog. "What's new" reads the bundled `CHANGELOG.md` after each update.
 
 The Gradle wrapper jar isn't in the repository (it's binary). CI uses Gradle 8.14.3 directly, and
 Android Studio reads `gradle/wrapper/gradle-wrapper.properties`. To add the wrapper scripts back on
@@ -47,7 +69,11 @@ app/           Android app (Kotlin, Jetpack Compose, Material 3)
   data/db/       Room database: receipts, items, attachments, reminders, tags, groups, search index
   data/files/    AttachmentStore: atomic, fsync'd file writes; PDF pages rendered to images
   capture/       OcrEngine (ML Kit) and ExtractionPipeline (draft -> OCR -> parse -> pre-fill)
-  data/settings/ Light / dark / match phone
+  data/settings/ Light / dark / match phone; update and what's-new flags
+  reminders/     AlarmReminderScheduler (inexact idle-safe alarms from reminder rows), notifications with
+                 Keeping it / Returned it / Remind me tomorrow, ReminderReceiver (alarms, buttons, boot,
+                 app update, clock and time-zone changes), DailyWorker (repair, purge, update check)
+  update/        Updater (GitHub releases feed, download, verify, PackageInstaller), What's new parser
   ui/theme/      Kept palette (light + dark), Plus Jakarta Sans, motion curves, line icons
   ui/components/ Chips, pills, press feedback, entrance animations, glow, glass snackbar
   ui/home/       Home: Next up card, search, filter, Returns closing, Warranties ending, settings
@@ -74,7 +100,9 @@ app/           Android app (Kotlin, Jetpack Compose, Material 3)
 ```
 
 - `:core:parser:test`: the parser and deadline rules.
-- `:app:testDebugUnitTest`: Home's sorting logic, and the database migration test (Robolectric).
+- `:app:testDebugUnitTest`: Home's sorting logic, the database migration test, the reminder flow
+  against real alarms and notifications, deleting and clean-up, the update feed and the changelog
+  (Robolectric where Android is needed).
 - Add `-Pscreenshots` to also render Home and the review card, light and dark, to
   `app/build/screenshots/`. They're for looking at, not pixel-compared.
 
@@ -101,11 +129,9 @@ The test fails below 90%, which is the roadmap's gate for the extraction phase.
 
 ## Next steps (from the spec)
 
-- [ ] **Reminders:** `AlarmScheduler` that hands `reminders` rows to AlarmManager (inexact,
-      `setAndAllowWhileIdle`), a `BroadcastReceiver` for boot / app update / time and time-zone
-      change that re-arms everything from the database, a daily WorkManager repair check,
-      notification actions (Keeping it / Returning it / Remind me tomorrow). See the two
-      `TODO(reminders phase)` markers in `ReceiptRepository`.
+- [x] **Reminders** (0.2.1): alarms, notification actions, re-arm on boot/update/clock change, daily repair.
+- [x] **Delete** (0.2.1): swipe or bin with Undo; clean up finished receipts.
+- [x] **Self-update** (0.2.1) from kish523/kept-releases, with What's new.
 - [ ] Calendar mirror (insert intent, no permission).
 - [x] Redesign: theme, icon, Home, review card, motion (0.2.0).
 - [x] "Keeping it" / "Returned it" with undo (from the Next up card; notification actions come with reminders).

@@ -3,6 +3,14 @@
 package app.kept.ui.home
 
 import android.app.Activity
+import android.Manifest
+import android.os.Build
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -143,6 +151,8 @@ fun HomeScreen(
     onOpenReceipt: (String) -> Unit,
     savedMessage: String?,
     onMessageShown: () -> Unit,
+    deleteRequest: String? = null,
+    onDeleteHandled: () -> Unit = {},
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
@@ -158,16 +168,40 @@ fun HomeScreen(
     var intro by rememberSaveable { mutableStateOf(true) }
     LaunchedEffect(Unit) { delay(1600); intro = false }
 
+    val update by viewModel.update.collectAsStateWithLifecycle()
+    val whatsNew by viewModel.whatsNew.collectAsStateWithLifecycle()
+    var installTick by remember { mutableIntStateOf(0) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { installTick++ }
+    val canInstall = remember(installTick) { viewModel.canInstallUpdates() }
+
+    // Ask for notifications right after the first receipt is saved: the moment reminders start to matter.
+    val notifLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted) viewModel.onNotificationsAllowed()
+    }
     LaunchedEffect(savedMessage) {
         if (savedMessage != null) {
             onMessageShown()
+            if (Build.VERSION.SDK_INT >= 33 && !viewModel.notificationsAllowed() && !viewModel.askedForNotifications) {
+                viewModel.askedForNotifications = true
+                notifLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
             snackbar.showSnackbar(savedMessage)
+        }
+    }
+    LaunchedEffect(deleteRequest) {
+        if (deleteRequest != null) {
+            onDeleteHandled()
+            viewModel.delete(deleteRequest)
         }
     }
     LaunchedEffect(viewModel) {
         viewModel.messages.collect { msg ->
-            val result = snackbar.showSnackbar(msg.text, actionLabel = if (msg.undo != null) "Undo" else null)
-            if (result == SnackbarResult.ActionPerformed) viewModel.undo(msg)
+            val result = snackbar.showSnackbar(
+                msg.text,
+                actionLabel = if (msg.undo != null) "Undo" else null,
+                duration = if (msg.undo != null) SnackbarDuration.Long else SnackbarDuration.Short,
+            )
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo(msg) else viewModel.expire(msg)
         }
     }
 
@@ -229,6 +263,15 @@ fun HomeScreen(
                     modifier = Modifier.ambientGlow(),
                 )
             }
+            item(key = "update") {
+                UpdateCard(
+                    state = update,
+                    canInstall = canInstall,
+                    onInstall = viewModel::installUpdate,
+                    onAllow = { context.startActivity(viewModel.installPermissionIntent()) },
+                    modifier = Modifier.animateItem(),
+                )
+            }
             if (c.hero != null || state.loaded) {
                 item(key = "hero") {
                     HeroCard(
@@ -262,18 +305,26 @@ fun HomeScreen(
                 item(key = "sec-unfinished") { SectionLabel("Needs review", Modifier.padding(top = 26.dp).animateItem()) }
                 itemsIndexed(c.unfinished, key = { _, r -> "u-${r.id}" }) { i, r ->
                     val n = index++
-                    UnfinishedRow(r, first = i == 0, last = i == c.unfinished.lastIndex, onClick = { onOpenReceipt(r.id) },
-                        modifier = Modifier.animateItem().enterRise(n, intro))
+                    Box(Modifier.animateItem().enterRise(n, intro)) {
+                        SwipeToDelete(rowShape(i == 0, i == c.unfinished.lastIndex), onDelete = { viewModel.delete(r.id) }) {
+                            UnfinishedRow(r, first = i == 0, last = i == c.unfinished.lastIndex, onClick = { onOpenReceipt(r.id) },
+                                onDelete = { viewModel.delete(r.id) })
+                        }
+                    }
                 }
             }
             c.sections.forEach { section ->
                 item(key = "sec-${section.title}") { SectionLabel(section.title, Modifier.padding(top = 26.dp).animateItem()) }
                 itemsIndexed(section.rows, key = { _, r -> "r-${r.itemId}" }) { i, row ->
                     val n = index++
-                    DeadlineRowItem(row, state.today, first = i == 0, last = i == section.rows.lastIndex,
-                        animateBar = intro, barDelay = n,
-                        onClick = { onOpenReceipt(row.receiptId) },
-                        modifier = Modifier.animateItem().enterRise(n, intro))
+                    Box(Modifier.animateItem().enterRise(n, intro)) {
+                        SwipeToDelete(rowShape(i == 0, i == section.rows.lastIndex), onDelete = { viewModel.delete(row.receiptId) }) {
+                            DeadlineRowItem(row, state.today, first = i == 0, last = i == section.rows.lastIndex,
+                                animateBar = intro, barDelay = n,
+                                onClick = { onOpenReceipt(row.receiptId) },
+                                onDelete = { viewModel.delete(row.receiptId) })
+                        }
+                    }
                 }
             }
             if (state.loaded && c.sections.isEmpty() && state.query.isNotBlank() && c.unfinished.isEmpty()) {
@@ -329,13 +380,9 @@ fun HomeScreen(
     }
 
     if (showSettings) {
-        SettingsSheet(
-            mode = themeMode,
-            dark = dark,
-            onMode = viewModel::setTheme,
-            onDismiss = { showSettings = false },
-        )
+        SettingsSheet(viewModel = viewModel, mode = themeMode, dark = dark, onDismiss = { showSettings = false })
     }
+    whatsNew?.let { WhatsNewSheet(it, onDismiss = viewModel::dismissWhatsNew) }
 }
 
 @Composable
@@ -585,7 +632,7 @@ private fun FilterControl(selected: HomeFilter, counts: Triple<Int, Int, Int>, o
     }
 }
 
-private fun rowShape(first: Boolean, last: Boolean) = RoundedCornerShape(
+internal fun rowShape(first: Boolean, last: Boolean) = RoundedCornerShape(
     topStart = if (first) 24.dp else 0.dp,
     topEnd = if (first) 24.dp else 0.dp,
     bottomStart = if (last) 24.dp else 0.dp,
@@ -593,7 +640,7 @@ private fun rowShape(first: Boolean, last: Boolean) = RoundedCornerShape(
 )
 
 @Composable
-private fun RowContainer(first: Boolean, last: Boolean, modifier: Modifier, spoken: String?, onClick: () -> Unit, content: @Composable () -> Unit) {
+private fun RowContainer(first: Boolean, last: Boolean, modifier: Modifier, spoken: String?, onClick: () -> Unit, onDelete: () -> Unit, content: @Composable () -> Unit) {
     val k = Kept.colors
     val shape = rowShape(first, last)
     Box(
@@ -605,7 +652,11 @@ private fun RowContainer(first: Boolean, last: Boolean, modifier: Modifier, spok
                 if (!first) drawLine(k.line, Offset(72.dp.toPx(), 0f), Offset(size.width - 16.dp.toPx(), 0f), 1.dp.toPx())
             }
             .keptClickable(pressed = 0.985f, onClick = onClick)
-            .then(if (spoken != null) Modifier.semantics(mergeDescendants = true) { contentDescription = spoken } else Modifier)
+            // Swiping isn't available to everyone: TalkBack and Switch Access get "Delete" as an action.
+            .semantics(mergeDescendants = true) {
+                if (spoken != null) contentDescription = spoken
+                customActions = listOf(CustomAccessibilityAction("Delete") { onDelete(); true })
+            }
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) { content() }
 }
@@ -619,6 +670,7 @@ private fun DeadlineRowItem(
     animateBar: Boolean,
     barDelay: Int,
     onClick: () -> Unit,
+    onDelete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val k = Kept.colors
@@ -628,7 +680,7 @@ private fun DeadlineRowItem(
         row.label,
         row.daysLeft?.let { if (it <= 0) "last day today" else "${daysLabel(it)} left" },
     ).joinToString(", ")
-    RowContainer(first, last, modifier, spoken, onClick) {
+    RowContainer(first, last, modifier, spoken, onClick, onDelete) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconTile(KeptIcons.forCategory(row.category))
             Spacer(Modifier.width(14.dp))
@@ -678,10 +730,10 @@ private fun WindowBar(used: Float, soon: Boolean, animate: Boolean, index: Int) 
 }
 
 @Composable
-private fun UnfinishedRow(receipt: ReceiptEntity, first: Boolean, last: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun UnfinishedRow(receipt: ReceiptEntity, first: Boolean, last: Boolean, onClick: () -> Unit, onDelete: () -> Unit, modifier: Modifier = Modifier) {
     val k = Kept.colors
     val reading = receipt.status == ReceiptStatus.DRAFT
-    RowContainer(first, last, modifier, null, onClick) {
+    RowContainer(first, last, modifier, null, onClick, onDelete) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconTile(KeptIcons.Scan)
             Spacer(Modifier.width(14.dp))
@@ -768,94 +820,5 @@ private fun ScanButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
             Spacer(Modifier.width(10.dp))
             Text("Scan receipt", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
         }
-    }
-}
-
-@Composable
-private fun SettingsSheet(mode: ThemeMode, dark: Boolean, onMode: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
-    val k = Kept.colors
-    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-    ModalBottomSheet(
-        onDismissRequest = onDismiss,
-        sheetState = sheet,
-        containerColor = k.background,
-        contentColor = k.ink,
-        scrimColor = Color.Black.copy(alpha = 0.32f),
-    ) {
-        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
-            Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 6.dp))
-            SectionLabel("Appearance", Modifier.padding(top = 20.dp))
-            Column(Modifier.clip(RoundedCornerShape(22.dp)).background(k.surface)) {
-                SwitchRow(
-                    icon = KeptIcons.Settings,
-                    title = "Match phone setting",
-                    subtitle = "Light or dark with the rest of your phone",
-                    checked = mode == ThemeMode.SYSTEM,
-                    onChange = { on -> onMode(if (on) ThemeMode.SYSTEM else if (dark) ThemeMode.DARK else ThemeMode.LIGHT) },
-                )
-                Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(1.dp).background(k.line))
-                SwitchRow(
-                    icon = KeptIcons.Moon,
-                    title = "Dark mode",
-                    subtitle = if (mode == ThemeMode.SYSTEM) "Following your phone: ${if (dark) "on" else "off"}" else if (dark) "On" else "Off",
-                    checked = dark,
-                    onChange = { on -> onMode(if (on) ThemeMode.DARK else ThemeMode.LIGHT) },
-                )
-            }
-            Row(Modifier.padding(top = 18.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0F6E56)), contentAlignment = Alignment.Center) {
-                    Image(
-                        painterResource(R.drawable.ic_launcher_foreground),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.requiredSize(60.dp),
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                Column {
-                    Text("Kept · version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelLarge, color = k.ink)
-                    Text("Your receipts stay on this phone.", style = MaterialTheme.typography.bodySmall, color = k.muted)
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun SwitchRow(
-    icon: androidx.compose.ui.graphics.vector.ImageVector,
-    title: String,
-    subtitle: String,
-    checked: Boolean,
-    onChange: (Boolean) -> Unit,
-) {
-    val k = Kept.colors
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .keptClickable(pressed = 0.98f, role = Role.Switch) { onChange(!checked) }
-            .semantics(mergeDescendants = true) { stateDescription = if (checked) "On" else "Off" }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        IconTile(icon, size = 40.dp)
-        Spacer(Modifier.width(14.dp))
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, color = k.ink)
-            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = k.muted, modifier = Modifier.padding(top = 1.dp))
-        }
-        Switch(
-            checked = checked,
-            onCheckedChange = null,
-            thumbContent = if (checked) ({ Icon(KeptIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }) else null,
-            colors = SwitchDefaults.colors(
-                checkedTrackColor = k.accent,
-                checkedThumbColor = k.onAccent,
-                checkedIconColor = k.accent,
-                uncheckedTrackColor = k.surface2,
-                uncheckedThumbColor = k.muted,
-                uncheckedBorderColor = k.lineStrong,
-            ),
-        )
     }
 }

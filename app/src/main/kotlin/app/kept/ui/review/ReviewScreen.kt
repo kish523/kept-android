@@ -49,6 +49,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
@@ -128,7 +129,7 @@ private val SHORT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Loca
 private val CHECKABLE = listOf("merchant", "purchaseDate", "total", "currency")
 
 @Composable
-fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: () -> Unit) {
+fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: () -> Unit, onDelete: () -> Unit = {}) {
     val state by viewModel.state.collectAsStateWithLifecycle()
     val k = Kept.colors
     val form = state.form
@@ -137,6 +138,7 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
     val scope = rememberCoroutineScope()
     val haptics = LocalHapticFeedback.current
     var datePicker by remember { mutableStateOf<DateTarget?>(null) }
+    var confirmDelete by remember { mutableStateOf(false) }
     var quickDates by rememberSaveable { mutableStateOf(false) }
     val requesters = remember { CHECKABLE.associateWith { BringIntoViewRequester() } }
     val toCheck = CHECKABLE.filter { it in state.needsCheck }
@@ -258,7 +260,7 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
                 .drawBehind { drawLine(k.line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
                 .padding(top = top)
                 .height(64.dp)
-                .padding(start = 6.dp, end = 12.dp),
+                .padding(start = 6.dp, end = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = onBack) { Icon(KeptIcons.Back, contentDescription = "Back", tint = k.ink) }
@@ -286,6 +288,11 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
                     Text("${toCheck.size} to check", style = MaterialTheme.typography.labelMedium, color = k.check)
                 }
             }
+            if (!state.reading) {
+                IconButton(onClick = { confirmDelete = true }) {
+                    Icon(KeptIcons.Trash, contentDescription = "Delete receipt", tint = k.muted)
+                }
+            }
         }
 
         // Frosted bottom bar with the Save button that morphs into a spinner, then a check.
@@ -309,6 +316,17 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
                 },
             )
         }
+    }
+
+    if (confirmDelete) {
+        AlertDialog(
+            onDismissRequest = { confirmDelete = false },
+            title = { Text("Delete this receipt?") },
+            text = { Text("The photo and details are removed from this phone, and its reminders stop. You can undo right after.") },
+            confirmButton = { TextButton(onClick = { confirmDelete = false; onDelete() }) { Text("Delete", color = k.soon) } },
+            dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Cancel") } },
+            containerColor = k.surface,
+        )
     }
 
     datePicker?.let { target ->

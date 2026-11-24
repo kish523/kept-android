@@ -19,9 +19,17 @@ import app.kept.data.db.ItemEntity
 import app.kept.data.db.ReceiptEntity
 import app.kept.data.db.ReceiptStatus
 import app.kept.ui.home.HomeScreen
+import app.kept.ui.home.SettingsContent
+import app.kept.ui.home.WhatsNewContent
+import app.kept.data.settings.ThemeMode
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.unit.dp
 import app.kept.ui.home.HomeViewModel
 import app.kept.ui.review.ReviewScreen
 import app.kept.ui.review.ReviewViewModel
+import app.kept.ui.theme.Kept
 import app.kept.ui.theme.KeptTheme
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
@@ -109,14 +117,39 @@ class ScreenshotTest {
     @Test fun home_dark() = home(true)
     @Test fun review_light() = review(false)
     @Test fun review_dark() = review(true)
+    @Test fun settings() = sheet("settings") { vm ->
+        SettingsContent(vm, ThemeMode.SYSTEM, dark = false, onDismiss = {})
+    }
+
+    @Test fun whats_new() = sheet("whats_new") { vm ->
+        WhatsNewContent(vm.loadWhatsNew()!!, onDismiss = {})
+    }
+
+    /** A sheet's content on the sheet's background (the sheet itself is a separate window). */
+    private fun sheet(name: String, content: @androidx.compose.runtime.Composable (HomeViewModel) -> Unit) {
+        enabled()
+        seedHome()
+        val vm = HomeViewModel(app.container)
+        compose.setContent {
+            KeptTheme(dark = false) {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(Kept.colors.background).padding(top = 24.dp),
+                ) { content(vm) }
+            }
+        }
+        settle()
+        save(name)
+    }
+
     @Test fun review_needs_check() = review(false, "faded_hardware", Locale("en", "LK"), "review_needs_check")
 
     private fun home(dark: Boolean) {
         enabled()
         seedHome()
+        val vm = HomeViewModel(app.container)
         compose.setContent {
             KeptTheme(dark = dark) {
-                HomeScreen(HomeViewModel(app.container), onOpenReceipt = {}, savedMessage = null, onMessageShown = {})
+                HomeScreen(vm, onOpenReceipt = {}, savedMessage = null, onMessageShown = {})
             }
         }
         settle()
@@ -126,9 +159,10 @@ class ScreenshotTest {
     private fun review(dark: Boolean, sample: String = "us_electronics", locale: Locale = Locale.US, name: String? = null) {
         enabled()
         val id = seedReview(sample, locale)
+        val vm = ReviewViewModel(app.container, id)
         compose.setContent {
             KeptTheme(dark = dark) {
-                ReviewScreen(ReviewViewModel(app.container, id), onSaved = {}, onBack = {})
+                ReviewScreen(vm, onSaved = {}, onBack = {})
             }
         }
         settle()

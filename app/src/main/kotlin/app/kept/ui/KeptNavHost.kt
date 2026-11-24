@@ -31,6 +31,7 @@ import app.kept.ui.review.ReviewViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 
 private const val SAVED_MESSAGE = "saved_message"
+private const val DELETE_RECEIPT = "delete_receipt"
 
 @Composable
 fun KeptNavHost(container: AppContainer, sharedReceiptId: MutableStateFlow<String?>) {
@@ -64,11 +65,15 @@ fun KeptNavHost(container: AppContainer, sharedReceiptId: MutableStateFlow<Strin
         composable("home") { entry ->
             val message by entry.savedStateHandle.getStateFlow<String?>(SAVED_MESSAGE, null)
                 .collectAsStateWithLifecycle()
+            val deleteRequest by entry.savedStateHandle.getStateFlow<String?>(DELETE_RECEIPT, null)
+                .collectAsStateWithLifecycle()
             HomeScreen(
                 viewModel = viewModel(factory = HomeViewModel.factory(container)),
                 onOpenReceipt = { id -> nav.navigate("review/$id") },
                 savedMessage = message,
                 onMessageShown = { entry.savedStateHandle[SAVED_MESSAGE] = null },
+                deleteRequest = deleteRequest,
+                onDeleteHandled = { entry.savedStateHandle[DELETE_RECEIPT] = null },
             )
         }
         composable(
@@ -83,6 +88,11 @@ fun KeptNavHost(container: AppContainer, sharedReceiptId: MutableStateFlow<Strin
                     nav.popBackStack()
                 },
                 onBack = { nav.popBackStack() },
+                // Home does the deleting, so its Undo message shows where the receipt was.
+                onDelete = {
+                    nav.previousBackStackEntry?.savedStateHandle?.set(DELETE_RECEIPT, receiptId)
+                    nav.popBackStack()
+                },
             )
         }
     }

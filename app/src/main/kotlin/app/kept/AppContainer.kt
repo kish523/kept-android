@@ -10,7 +10,12 @@ import app.kept.core.parser.model.Category
 import app.kept.data.ReceiptRepository
 import app.kept.data.db.KeptDatabase
 import app.kept.data.files.AttachmentStore
+import app.kept.data.settings.AppPrefs
 import app.kept.data.settings.ThemeSettings
+import app.kept.reminders.AlarmReminderScheduler
+import app.kept.reminders.ReminderNotifications
+import app.kept.reminders.ReminderScheduler
+import app.kept.update.Updater
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
@@ -22,16 +27,20 @@ import java.util.Locale
  * Hand-written dependency container. Small enough not to need Hilt; swap in Hilt later if it grows.
  */
 class AppContainer(context: Context) {
-    private val appContext = context.applicationContext
+    val appContext: Context = context.applicationContext
 
     /** Work that must finish even if the screen that started it closes (reading a receipt). */
     val appScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     val database: KeptDatabase by lazy { KeptDatabase.create(appContext) }
     val attachments: AttachmentStore by lazy { AttachmentStore(appContext) }
-    val repository: ReceiptRepository by lazy { ReceiptRepository(database, attachments) }
+    val reminderNotifications: ReminderNotifications by lazy { ReminderNotifications(appContext) }
+    val scheduler: ReminderScheduler by lazy { AlarmReminderScheduler(appContext, database, reminderNotifications) }
+    val repository: ReceiptRepository by lazy { ReceiptRepository(database, attachments, scheduler) }
     val policies: MerchantPolicyTable by lazy { loadPolicies() }
     val themeSettings: ThemeSettings by lazy { ThemeSettings(appContext) }
+    val prefs: AppPrefs by lazy { AppPrefs(appContext) }
+    val updater: Updater by lazy { Updater(appContext, prefs) }
 
     val extraction: ExtractionPipeline by lazy {
         ExtractionPipeline(database, attachments, OcrEngine(appContext), repository) {

@@ -1,0 +1,39 @@
+package app.kept.data.settings
+
+import android.content.Context
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
+
+/** Small app-wide flags: updates, what's-new bookkeeping, whether we've asked for notifications. */
+class AppPrefs(context: Context) {
+    private val prefs = context.applicationContext.getSharedPreferences("app", Context.MODE_PRIVATE)
+
+    private val _autoUpdate = MutableStateFlow(prefs.getBoolean(AUTO_UPDATE, true))
+    val autoUpdate: StateFlow<Boolean> = _autoUpdate.asStateFlow()
+
+    fun setAutoUpdate(on: Boolean) {
+        prefs.edit().putBoolean(AUTO_UPDATE, on).apply()
+        _autoUpdate.value = on
+    }
+
+    var lastUpdateCheckMillis: Long
+        get() = prefs.getLong(LAST_CHECK, 0L)
+        set(v) = prefs.edit().putLong(LAST_CHECK, v).apply()
+
+    /** The newest version whose "What's new" the user has seen. 0 = never recorded. */
+    var lastSeenVersionCode: Int
+        get() = prefs.getInt(LAST_SEEN, 0)
+        set(v) = prefs.edit().putInt(LAST_SEEN, v).apply()
+
+    var askedForNotifications: Boolean
+        get() = prefs.getBoolean(ASKED_NOTIFICATIONS, false)
+        set(v) = prefs.edit().putBoolean(ASKED_NOTIFICATIONS, v).apply()
+
+    private companion object {
+        const val AUTO_UPDATE = "auto_update"
+        const val LAST_CHECK = "last_update_check"
+        const val LAST_SEEN = "last_seen_version_code"
+        const val ASKED_NOTIFICATIONS = "asked_notifications"
+    }
+}

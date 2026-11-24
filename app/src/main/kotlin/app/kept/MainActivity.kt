@@ -29,7 +29,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         val container = (application as KeptApplication).container
-        if (savedInstanceState == null) handleShare(intent)
+        if (savedInstanceState == null) handleIntent(intent)
+        lifecycleScope.launch { container.updater.checkOnLaunch() }
         setContent {
             val mode by container.themeSettings.mode.collectAsStateWithLifecycle()
             val dark = isDark(mode)
@@ -49,6 +50,27 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    override fun onStart() {
+        super.onStart()
+        isInForeground = true
+    }
+
+    override fun onStop() {
+        super.onStop()
+        isInForeground = false
+        // Leaving the app is the least disruptive moment to install a waiting update.
+        (application as KeptApplication).container.updater.installIfQuietlyPossible()
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        intent?.getStringExtra(EXTRA_OPEN_RECEIPT)?.let { sharedReceiptId.value = it; return }
+        if (intent?.getBooleanExtra(EXTRA_INSTALL_UPDATE, false) == true) {
+            (application as KeptApplication).container.updater.install()
+            return
+        }
         handleShare(intent)
     }
 
@@ -74,5 +96,15 @@ class MainActivity : ComponentActivity() {
                     Toast.makeText(this@MainActivity, "Couldn't open that file", Toast.LENGTH_LONG).show()
                 }
         }
+    }
+
+    companion object {
+        /** Open this receipt (from a reminder notification). */
+        const val EXTRA_OPEN_RECEIPT = "openReceipt"
+        /** Install the downloaded update (from the "update ready" notification). */
+        const val EXTRA_INSTALL_UPDATE = "installUpdate"
+
+        @Volatile var isInForeground: Boolean = false
+            private set
     }
 }

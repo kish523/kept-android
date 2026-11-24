@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: the app icon's receipt and check, one colour (Android tints it). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M7,2.5H17A2,2 0,0 1,19 4.5V21.5L17.5,20.3L16,21.5L14.5,20.3L13,21.5L12,20.7L11,21.5L9.5,20.3L8,21.5L6.5,20.3L5,21.5V4.5A2,2 0,0 1,7 2.5ZM9.6,13.1L8.4,14.3L11,16.9L15.8,12.1L14.6,10.9L11,14.5Z" />
+</vector>
