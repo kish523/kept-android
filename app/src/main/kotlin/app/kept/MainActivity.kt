@@ -14,6 +14,9 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.kept.ui.theme.isDark
+import app.kept.ui.theme.KeptEffects
+import app.kept.ui.theme.LocalKeptEffects
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.lifecycle.lifecycleScope
 import app.kept.data.db.CaptureSource
 import app.kept.ui.KeptNavHost
@@ -42,8 +45,12 @@ class MainActivity : ComponentActivity() {
                 )
                 onDispose {}
             }
+            val reduce by container.prefs.reduceEffects.collectAsStateWithLifecycle()
+            val effects = if (reduce ?: container.lowEndDevice) KeptEffects.Lite else KeptEffects.Full
             KeptTheme(dark = dark) {
-                KeptNavHost(container = container, sharedReceiptId = sharedReceiptId)
+                CompositionLocalProvider(LocalKeptEffects provides effects) {
+                    KeptNavHost(container = container, sharedReceiptId = sharedReceiptId)
+                }
             }
         }
     }

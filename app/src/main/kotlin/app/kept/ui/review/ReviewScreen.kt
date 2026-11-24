@@ -103,13 +103,13 @@ import app.kept.ui.components.SectionLabel
 import app.kept.ui.components.Skeleton
 import app.kept.ui.components.attentionPulse
 import app.kept.ui.components.enterRise
+import app.kept.ui.components.glassBar
+import app.kept.ui.components.glassSource
 import app.kept.ui.components.keptClickable
 import app.kept.ui.theme.Kept
 import app.kept.ui.theme.KeptIcons
 import app.kept.ui.theme.KeptMotion
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.LocalDate
@@ -150,7 +150,7 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
         Column(
             Modifier
                 .fillMaxSize()
-                .hazeSource(haze)
+                .glassSource(haze)
                 .verticalScroll(scroll)
                 .padding(horizontal = 20.dp)
                 .padding(top = top + 72.dp, bottom = bottom + 124.dp),
@@ -256,7 +256,7 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
         Row(
             Modifier
                 .fillMaxWidth()
-                .hazeEffect(haze, k.glassBar)
+                .glassBar(haze)
                 .drawBehind { drawLine(k.line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
                 .padding(top = top)
                 .height(64.dp)
@@ -300,7 +300,7 @@ fun ReviewScreen(viewModel: ReviewViewModel, onSaved: (String) -> Unit, onBack: 
             Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .hazeEffect(haze, k.glassBar)
+                .glassBar(haze)
                 .drawBehind { drawLine(k.line, Offset(0f, 0f), Offset(size.width, 0f), 1.dp.toPx()) }
                 .padding(start = 20.dp, end = 20.dp, top = 14.dp, bottom = bottom + 18.dp),
             contentAlignment = Alignment.Center,

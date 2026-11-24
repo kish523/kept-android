@@ -16,6 +16,7 @@ import app.kept.reminders.AlarmReminderScheduler
 import app.kept.reminders.ReminderNotifications
 import app.kept.reminders.ReminderScheduler
 import app.kept.update.Updater
+import app.kept.ui.theme.DevicePerformance
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
@@ -41,6 +42,8 @@ class AppContainer(context: Context) {
     val themeSettings: ThemeSettings by lazy { ThemeSettings(appContext) }
     val prefs: AppPrefs by lazy { AppPrefs(appContext) }
     val updater: Updater by lazy { Updater(appContext, prefs) }
+    /** Measured once: whether this phone gets the light effects unless the user says otherwise. */
+    val lowEndDevice: Boolean by lazy { DevicePerformance.isLowEnd(appContext) }
 
     val extraction: ExtractionPipeline by lazy {
         ExtractionPipeline(database, attachments, OcrEngine(appContext), repository) {

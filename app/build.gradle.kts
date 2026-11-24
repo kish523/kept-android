@@ -18,8 +18,8 @@ android {
         targetSdk = 36
         // CI passes its run number (-PbuildNumber=N), which only grows, so every published build
         // is newer than the last; that's also how the in-app updater compares builds.
-        versionCode = (project.findProperty("buildNumber") as String?)?.toInt() ?: 3
-        versionName = "0.2.1"
+        versionCode = (project.findProperty("buildNumber") as String?)?.toInt() ?: 4
+        versionName = "0.2.2"
         // The public repo whose releases the in-app updater reads.
         buildConfigField("String", "UPDATE_REPO", "\"kish523/kept-android\"")
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
@@ -43,9 +43,11 @@ android {
     buildTypes {
         release {
             // What people install: not debuggable, so nothing can read Kept's data over USB.
-            // Code shrinking stays off until it's been tested on real phones (Room, ML Kit, Compose).
-            isMinifyEnabled = false
-            isShrinkResources = false
+            // R8 optimises the code (Compose runs much faster with it, which budget phones feel most)
+            // and drops unused code and resources. Names aren't obfuscated: see proguard-rules.pro.
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = signingConfigs.findByName("kept")
         }
     }

@@ -31,6 +31,9 @@ import app.kept.ui.review.ReviewScreen
 import app.kept.ui.review.ReviewViewModel
 import app.kept.ui.theme.Kept
 import app.kept.ui.theme.KeptTheme
+import app.kept.ui.theme.KeptEffects
+import app.kept.ui.theme.LocalKeptEffects
+import androidx.compose.runtime.CompositionLocalProvider
 import kotlinx.coroutines.runBlocking
 import org.junit.Assume.assumeTrue
 import org.junit.Rule
@@ -114,6 +117,7 @@ class ScreenshotTest {
     }
 
     @Test fun home_light() = home(false)
+    @Test fun home_lite() = home(false, KeptEffects.Lite, "home_lite")
     @Test fun home_dark() = home(true)
     @Test fun review_light() = review(false)
     @Test fun review_dark() = review(true)
@@ -144,17 +148,17 @@ class ScreenshotTest {
 
     @Test fun review_needs_check() = review(false, "faded_hardware", Locale("en", "LK"), "review_needs_check")
 
-    private fun home(dark: Boolean) {
+    private fun home(dark: Boolean, effects: KeptEffects = KeptEffects.Full, name: String? = null) {
         enabled()
         seedHome()
         val vm = HomeViewModel(app.container)
         compose.setContent {
             KeptTheme(dark = dark) {
-                HomeScreen(vm, onOpenReceipt = {}, savedMessage = null, onMessageShown = {})
+                CompositionLocalProvider(LocalKeptEffects provides effects) { HomeScreen(vm, onOpenReceipt = {}, savedMessage = null, onMessageShown = {}) }
             }
         }
         settle()
-        save(if (dark) "home_dark" else "home_light")
+        save(name ?: if (dark) "home_dark" else "home_light")
     }
 
     private fun review(dark: Boolean, sample: String = "us_electronics", locale: Locale = Locale.US, name: String? = null) {

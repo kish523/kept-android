@@ -1,0 +1,5 @@
+# Baseline profile: Android compiles these ahead of time when Kept is installed, instead of
+# warming them up while you use the app. Kept's own code is small, so all of it is listed.
+# (Compose, Room and the other libraries ship their own profiles, which are merged in.)
+HSPLapp/kept/**;->**(**)**
+Lapp/kept/**;

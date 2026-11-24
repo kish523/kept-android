@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.2.2: smoother on every phone
+
+**Faster**
+- Kept now runs fully optimised, and Android prepares it ahead of time when it's installed, so
+  screens open and scroll more smoothly, especially on budget phones.
+- Home sorts your receipts in the background, so scrolling never waits for it.
+- The download is smaller.
+
+**Lighter effects where they cost too much**
+- On phones with less memory or older Android, Kept automatically uses lighter effects: plain
+  translucent bars instead of live blur, a still background glow, and simpler animations. Same
+  design, much less work for the phone.
+- Switch it yourself any time: **Settings › Appearance › Reduce visual effects**.
+
 ## 0.2.1: reminders, deleting and updates
 
 **Reminders**

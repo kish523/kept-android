@@ -318,6 +318,20 @@ fun SettingsContent(viewModel: HomeViewModel, mode: ThemeMode, dark: Boolean, on
                     checked = dark,
                     onChange = { on -> viewModel.setTheme(if (on) ThemeMode.DARK else ThemeMode.LIGHT) },
                 )
+                Line()
+                val reduce by viewModel.reduceEffects.collectAsStateWithLifecycle()
+                val reduced = reduce ?: viewModel.lowEndDevice
+                SwitchRow(
+                    icon = KeptIcons.Sparkle,
+                    title = "Reduce visual effects",
+                    subtitle = when {
+                        reduce == null && reduced -> "On for this phone, to keep Kept smooth. No blur or background motion."
+                        reduced -> "On. No blur or background motion."
+                        else -> "Off. Turn on if Kept feels slow on this phone."
+                    },
+                    checked = reduced,
+                    onChange = viewModel::setReduceEffects,
+                )
             }
 
             SectionLabel("Updates", Modifier.padding(top = 20.dp))

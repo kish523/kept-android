@@ -23,6 +23,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.receiveAsFlow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -114,7 +115,10 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
             filter = inputs.filter,
             content = buildHome(rows, unfinished, today, inputs.filter, ids),
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
+    }
+        // Sorting and grouping happen off the main thread, so drawing never waits for them.
+        .flowOn(Dispatchers.Default)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), HomeUiState())
 
     fun onQueryChange(q: String) {
         query.value = q
@@ -179,6 +183,10 @@ class HomeViewModel(private val container: AppContainer) : ViewModel() {
     }
 
     // ---- updates and notifications, for Settings and the update card
+
+    val reduceEffects: StateFlow<Boolean?> = container.prefs.reduceEffects
+    val lowEndDevice: Boolean get() = container.lowEndDevice
+    fun setReduceEffects(on: Boolean) = container.prefs.setReduceEffects(if (on == container.lowEndDevice) null else on)
 
     fun setAutoUpdate(on: Boolean) = container.prefs.setAutoUpdate(on)
     fun checkForUpdate() = container.appScope.launch { container.updater.checkAndDownload() }

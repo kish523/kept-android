@@ -120,6 +120,9 @@ import app.kept.ui.components.GlassSnackbar
 import app.kept.ui.components.IconTile
 import app.kept.ui.components.SectionLabel
 import app.kept.ui.components.ambientGlow
+import app.kept.ui.components.glassBar
+import app.kept.ui.components.glassSource
+import app.kept.ui.theme.LocalKeptEffects
 import app.kept.ui.components.enterRise
 import app.kept.ui.components.keptClickable
 import app.kept.ui.findActivity
@@ -130,10 +133,7 @@ import app.kept.ui.theme.isDark
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
-import dev.chrisbanes.haze.HazeProgressive
 import dev.chrisbanes.haze.HazeState
-import dev.chrisbanes.haze.hazeEffect
-import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
@@ -166,6 +166,7 @@ fun HomeScreen(
     var showSettings by rememberSaveable { mutableStateOf(false) }
     // Rows rise in one after another the first time Home appears, not every time they scroll back in.
     var intro by rememberSaveable { mutableStateOf(true) }
+    val richEntrances = LocalKeptEffects.current.richEntrances
     LaunchedEffect(Unit) { delay(1600); intro = false }
 
     val update by viewModel.update.collectAsStateWithLifecycle()
@@ -251,7 +252,7 @@ fun HomeScreen(
     Box(Modifier.fillMaxSize().background(k.background)) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+            modifier = Modifier.fillMaxSize().glassSource(hazeState),
             contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = top + 14.dp, bottom = bottom + 160.dp),
         ) {
             item(key = "header") {
@@ -320,7 +321,7 @@ fun HomeScreen(
                     Box(Modifier.animateItem().enterRise(n, intro)) {
                         SwipeToDelete(rowShape(i == 0, i == section.rows.lastIndex), onDelete = { viewModel.delete(row.receiptId) }) {
                             DeadlineRowItem(row, state.today, first = i == 0, last = i == section.rows.lastIndex,
-                                animateBar = intro, barDelay = n,
+                                animateBar = intro && richEntrances, barDelay = n,
                                 onClick = { onOpenReceipt(row.receiptId) },
                                 onDelete = { viewModel.delete(row.receiptId) })
                         }
@@ -350,7 +351,7 @@ fun HomeScreen(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .hazeEffect(hazeState, k.glassBar)
+                    .glassBar(hazeState)
                     .drawBehind { drawLine(k.line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
                     .padding(top = top)
                     .height(52.dp),
@@ -366,9 +367,7 @@ fun HomeScreen(
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .height(bottom + 130.dp)
-                .hazeEffect(hazeState, k.glassBar) {
-                    progressive = HazeProgressive.verticalGradient(startIntensity = 0f, endIntensity = 1f)
-                },
+                .glassBar(hazeState, fadeUp = true),
         )
 
         SnackbarHost(

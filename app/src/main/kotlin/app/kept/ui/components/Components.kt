@@ -54,6 +54,11 @@ import androidx.compose.ui.unit.dp
 import app.kept.ui.theme.Kept
 import app.kept.ui.theme.KeptIcons
 import app.kept.ui.theme.KeptMotion
+import app.kept.ui.theme.LocalKeptEffects
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
@@ -77,7 +82,7 @@ fun Modifier.keptClickable(
 
 /** Fades and rises into place once, [index] steps after the screen appears. Off when [enabled] is false. */
 fun Modifier.enterRise(index: Int, enabled: Boolean = true, stepMs: Long = 45, baseMs: Long = 120): Modifier = composed {
-    if (!enabled) return@composed this
+    if (!enabled || !LocalKeptEffects.current.richEntrances) return@composed this
     val progress = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         delay(baseMs + index * stepMs)
@@ -99,9 +104,15 @@ fun Modifier.ambientGlow(): Modifier = composed {
     val accent = k.accent
     val second = k.glow2
     val alpha = k.glowAlpha
-    val t = rememberInfiniteTransition(label = "glow")
-    val drift by t.animateFloat(0f, 1f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Reverse), label = "drift")
-    val drift2 by t.animateFloat(1f, 0f, infiniteRepeatable(tween(21_000, easing = LinearEasing), RepeatMode.Reverse), label = "drift2")
+    // The drift redraws every frame forever, so budget phones get the same glow standing still.
+    val moving = LocalKeptEffects.current.ambientMotion
+    var drift = 0.5f
+    var drift2 = 0.5f
+    if (moving) {
+        val t = rememberInfiniteTransition(label = "glow")
+        drift = t.animateFloat(0f, 1f, infiniteRepeatable(tween(16_000, easing = LinearEasing), RepeatMode.Reverse), label = "drift").value
+        drift2 = t.animateFloat(1f, 0f, infiniteRepeatable(tween(21_000, easing = LinearEasing), RepeatMode.Reverse), label = "drift2").value
+    }
     drawBehind {
         val d = density
         fun blob(color: Color, cx: Float, cy: Float, r: Float) = drawCircle(
@@ -316,4 +327,24 @@ fun BouncingDots(color: Color, modifier: Modifier = Modifier) {
 fun rememberLauncher(): (suspend () -> Unit) -> Unit {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     return remember(scope) { { block -> scope.launch { block() } } }
+}
+
+/** Marks content that frosted bars blur. Does nothing in light effects mode (no blur there). */
+fun Modifier.glassSource(state: HazeState): Modifier = composed {
+    if (LocalKeptEffects.current.blur) hazeSource(state) else this
+}
+
+/**
+ * A frosted bar over [state]'s content. In light effects mode it's a plain translucent tint instead,
+ * which costs nothing to draw. [fadeUp] makes it fade in from the top (the strip under the Scan button).
+ */
+fun Modifier.glassBar(state: HazeState, fadeUp: Boolean = false): Modifier = composed {
+    val k = Kept.colors
+    when {
+        LocalKeptEffects.current.blur -> hazeEffect(state, k.glassBar) {
+            if (fadeUp) progressive = HazeProgressive.verticalGradient(startIntensity = 0f, endIntensity = 1f)
+        }
+        fadeUp -> background(Brush.verticalGradient(listOf(Color.Transparent, k.background.copy(alpha = 0.9f), k.background.copy(alpha = 0.96f))))
+        else -> background(k.background.copy(alpha = 0.96f))
+    }
 }

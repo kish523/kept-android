@@ -17,6 +17,15 @@ class AppPrefs(context: Context) {
         _autoUpdate.value = on
     }
 
+    /** "Reduce visual effects": null = decide from the phone (light on budget phones), else the user's choice. */
+    private val _reduceEffects = MutableStateFlow(if (prefs.contains(REDUCE_EFFECTS)) prefs.getBoolean(REDUCE_EFFECTS, false) else null)
+    val reduceEffects: StateFlow<Boolean?> = _reduceEffects.asStateFlow()
+
+    fun setReduceEffects(on: Boolean?) {
+        prefs.edit().apply { if (on == null) remove(REDUCE_EFFECTS) else putBoolean(REDUCE_EFFECTS, on) }.apply()
+        _reduceEffects.value = on
+    }
+
     var lastUpdateCheckMillis: Long
         get() = prefs.getLong(LAST_CHECK, 0L)
         set(v) = prefs.edit().putLong(LAST_CHECK, v).apply()
@@ -41,6 +50,7 @@ class AppPrefs(context: Context) {
         set(v) = prefs.edit().putBoolean(INSTALL_AFTER_PERMISSION, v).apply()
 
     private companion object {
+        const val REDUCE_EFFECTS = "reduce_effects"
         const val PROMPTED_BUILD = "prompted_update_build"
         const val INSTALL_AFTER_PERMISSION = "install_after_permission"
         const val AUTO_UPDATE = "auto_update"
