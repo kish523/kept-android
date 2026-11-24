@@ -53,6 +53,8 @@ data class ReviewForm(
 
 data class ReviewUiState(
     val reading: Boolean = true,
+    /** Re-opening a saved receipt (title "Receipt" instead of "Check receipt"). */
+    val editing: Boolean = false,
     val readFailed: Boolean = false,
     val form: ReviewForm = ReviewForm(),
     /** Fields to show in amber with "Check". Cleared one by one as the user edits them. */
@@ -60,6 +62,8 @@ data class ReviewUiState(
     val warnings: List<String> = emptyList(),
     val preview: Bitmap? = null,
     val saving: Boolean = false,
+    /** Saved: the button shows a check for a moment before the screen closes. */
+    val saved: Boolean = false,
     val error: String? = null,
 ) {
     val canSave: Boolean get() = !reading && !saving && form.merchant.isNotBlank() && form.purchaseDate != null
@@ -93,6 +97,7 @@ class ReviewViewModel(
                 it.copy(
                     reading = false,
                     readFailed = extraction?.status == ExtractionStatus.FAILED,
+                    editing = receipt!!.status == ReceiptStatus.ACTIVE,
                     form = buildForm(receipt!!, snapshot, items),
                     needsCheck = if (receipt.status == ReceiptStatus.ACTIVE) emptySet() else snapshot?.needsReview.orEmpty(),
                     warnings = snapshot?.warnings.orEmpty(),
@@ -224,7 +229,11 @@ class ReviewViewModel(
         _state.update { it.copy(saving = true) }
         viewModelScope.launch {
             runCatching { container.repository.saveReviewed(receiptId, reviewed) }
-                .onSuccess { reminders -> onSaved(savedMessage(reviewed, reminders.filter { it.kind == ReminderKind.RETURN }.map { it.fireAt.toLocalDate() })) }
+                .onSuccess { reminders ->
+                    _state.update { it.copy(saved = true) }
+                    kotlinx.coroutines.delay(650)
+                    onSaved(savedMessage(reviewed, reminders.filter { it.kind == ReminderKind.RETURN }.map { it.fireAt.toLocalDate() }))
+                }
                 .onFailure { e -> _state.update { it.copy(saving = false, error = "Couldn't save: ${e.message}") } }
         }
     }
@@ -235,7 +244,7 @@ class ReviewViewModel(
         val short = DateTimeFormatter.ofPattern("MMM d")
         return when {
             r.returnBy != null && returnReminderDates.isNotEmpty() ->
-                "Return by ${r.returnBy.format(day)} · reminders ${returnReminderDates.sorted().joinToString(", ") { it.format(short) }}"
+                "Saved. Reminders set for ${joinDates(returnReminderDates.sorted().map { it.format(short) })}."
             r.returnBy != null -> "Return by ${r.returnBy.format(day)}"
             r.warrantyEnds != null -> "Saved · warranty until ${r.warrantyEnds.format(short)}"
             else -> "Saved"
@@ -249,3 +258,10 @@ class ReviewViewModel(
 }
 
 private fun String.toBigDecimalOrNull(): BigDecimal? = runCatching { BigDecimal(this) }.getOrNull()
+
+/** "Dec 1, Dec 5 and Dec 7". */
+internal fun joinDates(parts: List<String>): String = when (parts.size) {
+    0 -> ""
+    1 -> parts[0]
+    else -> parts.dropLast(1).joinToString(", ") + " and " + parts.last()
+}

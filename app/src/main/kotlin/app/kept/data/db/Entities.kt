@@ -75,6 +75,8 @@ data class ItemEntity(
     val lifetimeWarranty: Boolean = false,
     val state: ItemState = ItemState.KEPT,
     val supportUrl: String? = null,
+    /** The user answered the return question ("Keeping it"): no more return reminders, off "Returns closing". */
+    @ColumnInfo(defaultValue = "0") val returnResolved: Boolean = false,
 )
 
 @Entity(
@@ -173,13 +175,17 @@ data class ReceiptWithDetails(
     @Relation(parentColumn = "id", entityColumn = "receiptId") val attachments: List<AttachmentEntity>,
 )
 
-/** One row on Home: an item and its nearest deadline. */
+/** One row on Home: an item and its deadlines. */
 data class DeadlineRow(
     val itemId: String,
     val receiptId: String,
     val itemName: String,
     val merchantName: String?,
+    val purchaseDate: LocalDate?,
+    val category: Category?,
     val returnBy: LocalDate?,
     val warrantyEnds: LocalDate?,
     val noReturns: Boolean,
+    val returnResolved: Boolean,
+    val state: ItemState,
 )

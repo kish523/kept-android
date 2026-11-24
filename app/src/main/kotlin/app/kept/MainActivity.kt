@@ -1,13 +1,19 @@
 package app.kept
 
 import android.content.Intent
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.kept.ui.theme.isDark
 import androidx.lifecycle.lifecycleScope
 import app.kept.data.db.CaptureSource
 import app.kept.ui.KeptNavHost
@@ -25,7 +31,17 @@ class MainActivity : ComponentActivity() {
         val container = (application as KeptApplication).container
         if (savedInstanceState == null) handleShare(intent)
         setContent {
-            KeptTheme {
+            val mode by container.themeSettings.mode.collectAsStateWithLifecycle()
+            val dark = isDark(mode)
+            // Status and navigation bar icons follow Kept's own light/dark choice, not just the phone's.
+            DisposableEffect(dark) {
+                enableEdgeToEdge(
+                    statusBarStyle = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+                    navigationBarStyle = if (dark) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+                )
+                onDispose {}
+            }
+            KeptTheme(dark = dark) {
                 KeptNavHost(container = container, sharedReceiptId = sharedReceiptId)
             }
         }

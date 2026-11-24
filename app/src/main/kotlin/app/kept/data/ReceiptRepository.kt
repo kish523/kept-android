@@ -10,11 +10,13 @@ import app.kept.data.db.AttachmentEntity
 import app.kept.data.db.AttachmentKind
 import app.kept.data.db.CaptureSource
 import app.kept.data.db.ItemEntity
+import app.kept.data.db.ItemState
 import app.kept.data.db.KeptDatabase
 import app.kept.data.db.ReceiptEntity
 import app.kept.data.db.ReceiptSearchEntity
 import app.kept.data.db.ReceiptStatus
 import app.kept.data.db.ReminderEntity
+import app.kept.data.db.ReminderStatus
 import app.kept.data.files.AttachmentStore
 import app.kept.data.files.StoredFile
 import kotlinx.coroutines.NonCancellable
@@ -106,6 +108,10 @@ class ReceiptRepository(
      */
     suspend fun saveReviewed(receiptId: String, r: ReviewedReceipt, now: LocalDateTime = LocalDateTime.now()): List<ReminderEntity> {
         val existing = db.receiptDao().get(receiptId) ?: error("Receipt $receiptId not found")
+        // Re-saving an edited receipt keeps what the user already decided (kept, returned, claimed).
+        val previous = db.itemDao().forReceipt(receiptId).firstOrNull()
+        val newReturnBy = if (r.noReturns) null else r.returnBy
+        val keepDecision = previous != null && previous.returnResolved && previous.returnBy == newReturnBy
         val items = r.items.ifEmpty { listOf(ReviewedItem(r.merchantName, 1, r.totalMinor, null)) }.mapIndexed { i, item ->
             ItemEntity(
                 receiptId = receiptId,
@@ -115,16 +121,19 @@ class ReceiptRepository(
                 totalPriceMinor = item.totalMinor,
                 category = r.category,
                 serialNumber = if (i == 0) r.serialNumber else null,
-                returnBy = if (r.noReturns) null else r.returnBy,
+                returnBy = newReturnBy,
                 returnNote = r.returnNote,
                 noReturns = r.noReturns,
                 warrantyEnds = r.warrantyEnds,
                 warrantyNote = r.warrantyNote,
                 lifetimeWarranty = r.lifetimeWarranty,
+                state = previous?.state ?: ItemState.KEPT,
+                returnResolved = keepDecision,
             )
         }
         val reminders = items.flatMap { item ->
-            val returns = item.returnBy?.let { ReminderPlanner.plan(ReminderKind.RETURN, it, now) }.orEmpty()
+            val returns = item.returnBy?.takeUnless { item.returnResolved }
+                ?.let { ReminderPlanner.plan(ReminderKind.RETURN, it, now) }.orEmpty()
             val warranty = item.warrantyEnds?.let { ReminderPlanner.plan(ReminderKind.WARRANTY, it, now) }.orEmpty()
             (returns + warranty).map { p ->
                 ReminderEntity(itemId = item.id, kind = p.kind, dueDate = p.dueDate, daysBefore = p.daysBefore, fireAt = p.fireAt)
@@ -167,6 +176,33 @@ class ReceiptRepository(
         return deduped
     }
 
+    /** "Keeping it": the return window no longer matters. Its return reminders are cancelled; the warranty stays. */
+    suspend fun markKeeping(itemId: String) = db.withTransaction {
+        db.itemDao().setReturnResolved(itemId, true)
+        db.reminderDao().moveStatus(itemId, listOf(ReminderKind.RETURN), ACTIVE_REMINDERS, ReminderStatus.CANCELLED)
+        // TODO(reminders phase): cancel the matching OS alarms.
+    }
+
+    suspend fun undoKeeping(itemId: String) = db.withTransaction {
+        db.itemDao().setReturnResolved(itemId, false)
+        db.reminderDao().moveStatus(itemId, listOf(ReminderKind.RETURN), listOf(ReminderStatus.CANCELLED), ReminderStatus.PENDING)
+    }
+
+    /** "Returned it": the item leaves Home and every reminder for it stops. Returns the state to restore on undo. */
+    suspend fun markReturned(itemId: String): ItemState = db.withTransaction {
+        val before = db.itemDao().get(itemId)?.state ?: ItemState.KEPT
+        db.itemDao().setState(itemId, ItemState.RETURNED)
+        db.reminderDao().moveStatus(itemId, ReminderKind.entries, ACTIVE_REMINDERS, ReminderStatus.CANCELLED)
+        before
+    }
+
+    suspend fun undoReturned(itemId: String, restore: ItemState) = db.withTransaction {
+        db.itemDao().setState(itemId, restore)
+        val item = db.itemDao().get(itemId)
+        val kinds = if (item?.returnResolved == true) listOf(ReminderKind.WARRANTY) else ReminderKind.entries
+        db.reminderDao().moveStatus(itemId, kinds, listOf(ReminderStatus.CANCELLED), ReminderStatus.PENDING)
+    }
+
     /** Permanently deletes a receipt: rows (cascade), files and search entry. */
     suspend fun delete(receiptId: String) {
         db.withTransaction {
@@ -184,3 +220,5 @@ class ReceiptRepository(
         return db.searchDao().search(words.joinToString(" ") { "$it*" })
     }
 }
+
+private val ACTIVE_REMINDERS = listOf(ReminderStatus.PENDING, ReminderStatus.HANDED_TO_OS, ReminderStatus.SNOOZED)

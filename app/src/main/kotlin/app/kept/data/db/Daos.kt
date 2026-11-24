@@ -6,6 +6,7 @@ import androidx.room.OnConflictStrategy
 import androidx.room.Query
 import androidx.room.Transaction
 import androidx.room.Update
+import app.kept.core.deadlines.ReminderKind
 import kotlinx.coroutines.flow.Flow
 import java.time.Instant
 
@@ -48,11 +49,19 @@ interface ItemDao {
     @Query("UPDATE items SET state = :state WHERE id = :itemId")
     suspend fun setState(itemId: String, state: ItemState)
 
+    @Query("UPDATE items SET returnResolved = :resolved WHERE id = :itemId")
+    suspend fun setReturnResolved(itemId: String, resolved: Boolean)
+
+    @Query("SELECT * FROM items WHERE id = :itemId")
+    suspend fun get(itemId: String): ItemEntity?
+
     /** Active items with any deadline, nearest first. Dates are ISO text, so they sort correctly. */
     @Query(
         """
         SELECT i.id AS itemId, i.receiptId AS receiptId, i.name AS itemName, r.merchantName AS merchantName,
-               i.returnBy AS returnBy, i.warrantyEnds AS warrantyEnds, i.noReturns AS noReturns
+               r.purchaseDate AS purchaseDate, COALESCE(i.category, r.category) AS category,
+               i.returnBy AS returnBy, i.warrantyEnds AS warrantyEnds, i.noReturns AS noReturns,
+               i.returnResolved AS returnResolved, i.state AS state
         FROM items i JOIN receipts r ON r.id = i.receiptId
         WHERE r.status = 'ACTIVE' AND i.state IN ('KEPT', 'RETURNING')
         ORDER BY COALESCE(i.returnBy, i.warrantyEnds) IS NULL, COALESCE(i.returnBy, i.warrantyEnds)
@@ -90,6 +99,10 @@ interface ReminderDao {
 
     @Query("DELETE FROM reminders WHERE itemId IN (SELECT id FROM items WHERE receiptId = :receiptId)")
     suspend fun deleteForReceipt(receiptId: String)
+
+    /** Moves an item's reminders of the given kinds from one set of statuses to another (cancel, or undo a cancel). */
+    @Query("UPDATE reminders SET status = :to WHERE itemId = :itemId AND kind IN (:kinds) AND status IN (:from)")
+    suspend fun moveStatus(itemId: String, kinds: List<ReminderKind>, from: List<ReminderStatus>, to: ReminderStatus)
 
     /** What the alarm scheduler re-arms after boot, update or a clock change. */
     @Query("SELECT * FROM reminders WHERE status IN ('PENDING', 'HANDED_TO_OS', 'SNOOZED') ORDER BY fireAt")

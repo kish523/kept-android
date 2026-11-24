@@ -3,7 +3,17 @@ package app.kept.ui
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
+import androidx.compose.animation.AnimatedContentTransitionScope
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.foundation.background
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
+import app.kept.ui.theme.Kept
+import app.kept.ui.theme.KeptMotion
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -35,7 +45,22 @@ fun KeptNavHost(container: AppContainer, sharedReceiptId: MutableStateFlow<Strin
         }
     }
 
-    NavHost(navController = nav, startDestination = "home") {
+    // iOS-style push: the new screen slides in from the right while the one below drifts left and dims.
+    // With predictive back (Android 14+) the same motion follows your thumb.
+    val ms = KeptMotion.SCREEN_MS
+    NavHost(
+        navController = nav,
+        startDestination = "home",
+        modifier = Modifier.background(Kept.colors.background),
+        enterTransition = { slideIntoContainer(AnimatedContentTransitionScope.SlideDirection.Start, tween(ms, easing = KeptMotion.Settle)) },
+        exitTransition = {
+            slideOutHorizontally(tween(ms, easing = KeptMotion.Settle)) { -it * 28 / 100 } + fadeOut(tween(ms), targetAlpha = 0.55f)
+        },
+        popEnterTransition = {
+            slideInHorizontally(tween(ms, easing = KeptMotion.Settle)) { -it * 28 / 100 } + fadeIn(tween(ms), initialAlpha = 0.55f)
+        },
+        popExitTransition = { slideOutOfContainer(AnimatedContentTransitionScope.SlideDirection.End, tween(ms, easing = KeptMotion.Settle)) },
+    ) {
         composable("home") { entry ->
             val message by entry.savedStateHandle.getStateFlow<String?>(SAVED_MESSAGE, null)
                 .collectAsStateWithLifecycle()

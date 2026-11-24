@@ -10,6 +10,7 @@ import app.kept.core.parser.model.Category
 import app.kept.data.ReceiptRepository
 import app.kept.data.db.KeptDatabase
 import app.kept.data.files.AttachmentStore
+import app.kept.data.settings.ThemeSettings
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.Dispatchers
@@ -30,6 +31,7 @@ class AppContainer(context: Context) {
     val attachments: AttachmentStore by lazy { AttachmentStore(appContext) }
     val repository: ReceiptRepository by lazy { ReceiptRepository(database, attachments) }
     val policies: MerchantPolicyTable by lazy { loadPolicies() }
+    val themeSettings: ThemeSettings by lazy { ThemeSettings(appContext) }
 
     val extraction: ExtractionPipeline by lazy {
         ExtractionPipeline(database, attachments, OcrEngine(appContext), repository) {

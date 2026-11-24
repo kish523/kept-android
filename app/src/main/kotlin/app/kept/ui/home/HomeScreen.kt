@@ -6,59 +6,136 @@ import android.app.Activity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyListScope
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.ExtendedFloatingActionButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ListItem
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarResult
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.material3.TopAppBar
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.stateDescription
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import app.kept.data.db.DeadlineRow
+import app.kept.BuildConfig
+import app.kept.R
 import app.kept.data.db.ReceiptEntity
 import app.kept.data.db.ReceiptStatus
+import app.kept.data.settings.ThemeMode
+import app.kept.ui.components.DaysPill
+import app.kept.ui.components.GlassSnackbar
+import app.kept.ui.components.IconTile
+import app.kept.ui.components.SectionLabel
+import app.kept.ui.components.ambientGlow
+import app.kept.ui.components.enterRise
+import app.kept.ui.components.keptClickable
 import app.kept.ui.findActivity
-import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
+import app.kept.ui.theme.Kept
+import app.kept.ui.theme.KeptIcons
+import app.kept.ui.theme.KeptMotion
+import app.kept.ui.theme.isDark
 import com.google.mlkit.vision.documentscanner.GmsDocumentScannerOptions
+import com.google.mlkit.vision.documentscanner.GmsDocumentScanning
 import com.google.mlkit.vision.documentscanner.GmsDocumentScanningResult
+import dev.chrisbanes.haze.HazeProgressive
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.FormatStyle
-import java.time.temporal.ChronoUnit
+import java.util.Locale
+
+private val SHORT: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM d", Locale.getDefault())
+private val SPOKEN: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+private val HEADER_DATE: DateTimeFormatter = DateTimeFormatter.ofPattern("EEEE, MMMM d", Locale.getDefault())
 
 @Composable
 fun HomeScreen(
@@ -68,9 +145,18 @@ fun HomeScreen(
     onMessageShown: () -> Unit,
 ) {
     val state by viewModel.state.collectAsStateWithLifecycle()
+    val themeMode by viewModel.themeMode.collectAsStateWithLifecycle()
+    val k = Kept.colors
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptics = LocalHapticFeedback.current
     val snackbar = remember { SnackbarHostState() }
+    val hazeState = remember { HazeState() }
+    val listState = rememberLazyListState()
+    var showSettings by rememberSaveable { mutableStateOf(false) }
+    // Rows rise in one after another the first time Home appears, not every time they scroll back in.
+    var intro by rememberSaveable { mutableStateOf(true) }
+    LaunchedEffect(Unit) { delay(1600); intro = false }
 
     LaunchedEffect(savedMessage) {
         if (savedMessage != null) {
@@ -78,9 +164,16 @@ fun HomeScreen(
             snackbar.showSnackbar(savedMessage)
         }
     }
+    LaunchedEffect(viewModel) {
+        viewModel.messages.collect { msg ->
+            val result = snackbar.showSnackbar(msg.text, actionLabel = if (msg.undo != null) "Undo" else null)
+            if (result == SnackbarResult.ActionPerformed) viewModel.undo(msg)
+        }
+    }
 
     // Google's document scanner: edge detection, multi-page, cleanup, gallery import. No camera permission.
-    val scanner = remember {
+    // Created on first tap, not on first frame: keeps start-up light and Home renderable without Play services.
+    val scanner by lazy {
         GmsDocumentScanning.getClient(
             GmsDocumentScannerOptions.Builder()
                 .setScannerMode(GmsDocumentScannerOptions.SCANNER_MODE_FULL)
@@ -101,6 +194,7 @@ fun HomeScreen(
         }
     }
     val startScan: () -> Unit = {
+        haptics.performHapticFeedback(HapticFeedbackType.ContextClick)
         val activity = context.findActivity()
         if (activity != null) {
             scanner.getStartScanIntent(activity)
@@ -111,56 +205,379 @@ fun HomeScreen(
         }
     }
 
-    Scaffold(
-        topBar = { TopAppBar(title = { Text("Kept") }) },
-        floatingActionButton = {
-            ExtendedFloatingActionButton(
-                onClick = startScan,
-                icon = { Icon(Icons.Filled.Add, contentDescription = null) },
-                text = { Text("Scan receipt") },
-            )
-        },
-        snackbarHost = { SnackbarHost(snackbar) },
-    ) { padding ->
+    val density = LocalDensity.current
+    val scrolled by remember {
+        derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > with(density) { 56.dp.toPx() } }
+    }
+    val top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val dark = isDark(themeMode)
+    val c = state.content
+
+    Box(Modifier.fillMaxSize().background(k.background)) {
         LazyColumn(
-            modifier = Modifier.padding(padding),
-            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 96.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
+            state = listState,
+            modifier = Modifier.fillMaxSize().hazeSource(hazeState),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = top + 14.dp, bottom = bottom + 160.dp),
         ) {
-            item {
-                OutlinedTextField(
-                    value = state.query,
-                    onValueChange = viewModel::onQueryChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    placeholder = { Text("Search stores, items, serial numbers") },
-                    leadingIcon = { Icon(Icons.Filled.Search, contentDescription = null) },
-                    singleLine = true,
+            item(key = "header") {
+                Header(
+                    today = state.today,
+                    dark = dark,
+                    onToggleTheme = { viewModel.setTheme(if (dark) ThemeMode.LIGHT else ThemeMode.DARK) },
+                    onSettings = { showSettings = true },
+                    modifier = Modifier.ambientGlow(),
                 )
             }
-            if (state.isEmpty) {
-                item { EmptyState(onScan = startScan) }
+            if (c.hero != null || state.loaded) {
+                item(key = "hero") {
+                    HeroCard(
+                        hero = c.hero,
+                        today = state.today,
+                        onOpen = onOpenReceipt,
+                        onKeep = { haptics.performHapticFeedback(HapticFeedbackType.Confirm); viewModel.keep(it) },
+                        onReturned = { haptics.performHapticFeedback(HapticFeedbackType.Confirm); viewModel.returned(it) },
+                        modifier = Modifier.enterRise(0, intro, baseMs = 40),
+                    )
+                }
             }
-            section("Needs review", state.unfinished) { receipt ->
-                UnfinishedRow(receipt, onClick = { onOpenReceipt(receipt.id) })
+            if (!state.isEmpty) {
+                item(key = "search") {
+                    SearchField(state.query, viewModel::onQueryChange, Modifier.padding(top = 16.dp).enterRise(1, intro, baseMs = 40))
+                }
+                item(key = "filter") {
+                    FilterControl(
+                        selected = state.filter,
+                        counts = Triple(c.allCount, c.returnsCount, c.warrantiesCount),
+                        onSelect = { haptics.performHapticFeedback(HapticFeedbackType.SegmentTick); viewModel.onFilter(it) },
+                        modifier = Modifier.padding(top = 12.dp).enterRise(2, intro, baseMs = 40),
+                    )
+                }
+            } else {
+                item(key = "empty") { EmptyState(onScan = startScan, modifier = Modifier.enterRise(1, intro)) }
             }
-            section("Returns closing", state.returnsClosing) { row ->
-                DeadlineItem(row, row.returnBy!!, "Return by", state.today, onClick = { onOpenReceipt(row.receiptId) })
+
+            var index = 3
+            if (c.unfinished.isNotEmpty()) {
+                item(key = "sec-unfinished") { SectionLabel("Needs review", Modifier.padding(top = 26.dp).animateItem()) }
+                itemsIndexed(c.unfinished, key = { _, r -> "u-${r.id}" }) { i, r ->
+                    val n = index++
+                    UnfinishedRow(r, first = i == 0, last = i == c.unfinished.lastIndex, onClick = { onOpenReceipt(r.id) },
+                        modifier = Modifier.animateItem().enterRise(n, intro))
+                }
             }
-            section("Warranties ending", state.warrantiesEnding) { row ->
-                DeadlineItem(row, row.warrantyEnds!!, "Warranty until", state.today, onClick = { onOpenReceipt(row.receiptId) })
+            c.sections.forEach { section ->
+                item(key = "sec-${section.title}") { SectionLabel(section.title, Modifier.padding(top = 26.dp).animateItem()) }
+                itemsIndexed(section.rows, key = { _, r -> "r-${r.itemId}" }) { i, row ->
+                    val n = index++
+                    DeadlineRowItem(row, state.today, first = i == 0, last = i == section.rows.lastIndex,
+                        animateBar = intro, barDelay = n,
+                        onClick = { onOpenReceipt(row.receiptId) },
+                        modifier = Modifier.animateItem().enterRise(n, intro))
+                }
             }
-            section("Everything else", state.everythingElse) { row ->
-                val next = listOfNotNull(
-                    row.returnBy?.takeIf { !it.isBefore(state.today) }?.let { it to "Return by" },
-                    row.warrantyEnds?.takeIf { !it.isBefore(state.today) }?.let { it to "Warranty until" },
-                ).minByOrNull { it.first }
-                if (next != null) {
-                    DeadlineItem(row, next.first, next.second, state.today, onClick = { onOpenReceipt(row.receiptId) })
-                } else {
-                    ListItem(
-                        headlineContent = { Text(row.itemName, maxLines = 2) },
-                        supportingContent = { Text(listOfNotNull(row.merchantName, "No open deadlines").joinToString(" · ")) },
-                        modifier = Modifier.clickable { onOpenReceipt(row.receiptId) },
+            if (state.loaded && c.sections.isEmpty() && state.query.isNotBlank() && c.unfinished.isEmpty()) {
+                item(key = "nomatch") {
+                    Text(
+                        "No receipts match “${state.query.trim()}”.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = k.muted,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 40.dp),
+                    )
+                }
+            }
+        }
+
+        // Compact frosted title bar that appears once the big "Kept" title scrolls away.
+        AnimatedVisibility(
+            visible = scrolled,
+            enter = fadeIn(tween(220)) + slideInVertically(tween(320, easing = KeptMotion.Settle)) { -it / 6 },
+            exit = fadeOut(tween(180)),
+            modifier = Modifier.align(Alignment.TopCenter),
+        ) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .hazeEffect(hazeState, k.glassBar)
+                    .drawBehind { drawLine(k.line, Offset(0f, size.height), Offset(size.width, size.height), 1.dp.toPx()) }
+                    .padding(top = top)
+                    .height(52.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Kept", style = MaterialTheme.typography.titleMedium, color = k.ink)
+            }
+        }
+
+        // Content blurs progressively as it slides under the Scan button.
+        Box(
+            Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .height(bottom + 130.dp)
+                .hazeEffect(hazeState, k.glassBar) {
+                    progressive = HazeProgressive.verticalGradient(startIntensity = 0f, endIntensity = 1f)
+                },
+        )
+
+        SnackbarHost(
+            snackbar,
+            modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 100.dp),
+        ) { GlassSnackbar(it) }
+
+        ScanButton(onClick = startScan, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = bottom + 24.dp))
+    }
+
+    if (showSettings) {
+        SettingsSheet(
+            mode = themeMode,
+            dark = dark,
+            onMode = viewModel::setTheme,
+            onDismiss = { showSettings = false },
+        )
+    }
+}
+
+@Composable
+private fun Header(today: LocalDate, dark: Boolean, onToggleTheme: () -> Unit, onSettings: () -> Unit, modifier: Modifier = Modifier) {
+    val k = Kept.colors
+    Row(
+        modifier.fillMaxWidth().padding(top = 6.dp, bottom = 18.dp).enterRise(0, baseMs = 0),
+        verticalAlignment = Alignment.Bottom,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(today.format(HEADER_DATE), style = MaterialTheme.typography.labelLarge, color = k.muted)
+            Text("Kept", style = MaterialTheme.typography.displaySmall, color = k.ink, modifier = Modifier.padding(top = 2.dp))
+        }
+        Row(Modifier.offset(x = 8.dp)) {
+            IconButton(onClick = onToggleTheme) {
+                AnimatedContent(dark, transitionSpec = {
+                    (fadeIn(tween(220)) + scaleIn(initialScale = 0.6f)) togetherWith fadeOut(tween(150))
+                }, label = "theme") { isDark ->
+                    Icon(
+                        if (isDark) KeptIcons.Sun else KeptIcons.Moon,
+                        contentDescription = if (isDark) "Switch to light mode" else "Switch to dark mode",
+                        tint = k.ink,
+                    )
+                }
+            }
+            IconButton(onClick = onSettings) { Icon(KeptIcons.Settings, contentDescription = "Settings", tint = k.ink) }
+        }
+    }
+}
+
+@Composable
+private fun HeroCard(
+    hero: HeroModel?,
+    today: LocalDate,
+    onOpen: (String) -> Unit,
+    onKeep: (String) -> Unit,
+    onReturned: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedContent(
+        targetState = hero,
+        contentKey = { it?.itemId to it?.kind },
+        transitionSpec = {
+            (fadeIn(tween(320, 120)) + slideInHorizontally(tween(480, easing = KeptMotion.Settle)) { it / 8 }) togetherWith
+                (fadeOut(tween(180)) + slideOutHorizontally(tween(320, easing = KeptMotion.Settle)) { -it / 8 }) using
+                SizeTransform(clip = false)
+        },
+        modifier = modifier,
+        label = "hero",
+    ) { h ->
+        if (h == null) {
+            Spacer(Modifier.fillMaxWidth().height(0.dp))
+        } else {
+            HeroContent(h, today, onOpen, onKeep, onReturned)
+        }
+    }
+}
+
+@Composable
+private fun HeroContent(h: HeroModel, today: LocalDate, onOpen: (String) -> Unit, onKeep: (String) -> Unit, onReturned: (String) -> Unit) {
+    val k = Kept.colors
+    val isReturn = h.kind == DeadlineKind.RETURN
+    val dueText = if (isReturn) "Return by ${h.due.format(SHORT)}" else "Warranty ends ${h.due.format(SHORT)}"
+    val unit = when (h.daysLeft) { 0L -> "last day"; 1L -> "day left"; else -> "days left" }
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(28.dp))
+            .background(k.heroBackground.copy(alpha = 0.88f))
+            .border(1.dp, Color.White.copy(alpha = 0.07f), RoundedCornerShape(28.dp))
+            .padding(6.dp),
+    ) {
+        Column(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(22.dp))
+                .keptClickable(pressed = 0.98f) { onOpen(h.receiptId) }
+                .semantics(mergeDescendants = true) {
+                    contentDescription = "Next up: ${h.name}${h.merchant?.let { ", $it" }.orEmpty()}. $dueText, " +
+                        "${h.daysLeft} $unit. ${h.due.format(SPOKEN)}"
+                }
+                .padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 14.dp),
+        ) {
+            Row(Modifier.fillMaxWidth()) {
+                Text("NEXT UP", style = MaterialTheme.typography.labelSmall, color = k.heroInk.copy(alpha = 0.72f), modifier = Modifier.weight(1f))
+                Text(
+                    (if (isReturn) "Return window" else "Warranty").uppercase(),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = k.heroInk.copy(alpha = 0.72f),
+                )
+            }
+            Row(Modifier.padding(top = 14.dp), verticalAlignment = Alignment.CenterVertically) {
+                DaysRing(h.daysLeft, unit, h.fractionLeft)
+                Spacer(Modifier.width(18.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(h.name, style = MaterialTheme.typography.titleMedium.copy(fontSize = MaterialTheme.typography.titleLarge.fontSize), color = k.heroInk, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    h.merchant?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = k.heroInk.copy(alpha = 0.72f), modifier = Modifier.padding(top = 2.dp)) }
+                    Text(
+                        dueText,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = k.heroArc,
+                        modifier = Modifier.padding(top = 10.dp).clip(CircleShape).background(k.heroChip).padding(horizontal = 11.dp, vertical = 6.dp),
+                    )
+                }
+            }
+        }
+        if (isReturn) {
+            Row(Modifier.fillMaxWidth().padding(top = 2.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                HeroAction("Keeping it", KeptIcons.Check, Modifier.weight(1f)) { onKeep(h.itemId) }
+                HeroAction("Returned it", KeptIcons.ReturnArrow, Modifier.weight(1f)) { onReturned(h.itemId) }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroAction(label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier, onClick: () -> Unit) {
+    val k = Kept.colors
+    Row(
+        modifier
+            .height(48.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.09f))
+            .keptClickable(pressed = 0.95f, onClick = onClick),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(icon, contentDescription = null, tint = k.heroInk, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(label, style = MaterialTheme.typography.labelLarge, color = k.heroInk)
+    }
+}
+
+/** The countdown ring. Fills in when it first appears, then animates to new values. */
+@Composable
+private fun DaysRing(days: Long, unit: String, fractionLeft: Float) {
+    val k = Kept.colors
+    val start = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { delay(250); start.animateTo(1f, tween(1200, easing = KeptMotion.Settle)) }
+    val target by animateFloatAsState(fractionLeft, tween(900, easing = KeptMotion.Settle), label = "ring")
+    Box(Modifier.size(78.dp), contentAlignment = Alignment.Center) {
+        Canvas(Modifier.fillMaxSize()) {
+            val w = 7.dp.toPx()
+            val inset = w / 2
+            val arcSize = androidx.compose.ui.geometry.Size(size.width - w, size.height - w)
+            drawArc(k.heroTrack, 0f, 360f, false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(w))
+            drawArc(k.heroArc, -90f, 360f * target * start.value, false, topLeft = Offset(inset, inset), size = arcSize, style = Stroke(w, cap = StrokeCap.Round))
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text("$days", style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.ExtraBold), color = k.heroInk)
+            Text(unit, style = MaterialTheme.typography.labelSmall.copy(letterSpacing = MaterialTheme.typography.bodySmall.letterSpacing), color = k.heroInk.copy(alpha = 0.72f))
+        }
+    }
+}
+
+@Composable
+private fun SearchField(query: String, onChange: (String) -> Unit, modifier: Modifier = Modifier) {
+    val k = Kept.colors
+    var focused by remember { mutableStateOf(false) }
+    val ring by animateDpAsState(if (focused) 2.dp else 1.dp, label = "ring")
+    BasicTextField(
+        value = query,
+        onValueChange = onChange,
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium.copy(color = k.ink, fontSize = MaterialTheme.typography.titleSmall.fontSize),
+        cursorBrush = SolidColor(k.accent),
+        keyboardOptions = KeyboardOptions.Default,
+        modifier = modifier
+            .fillMaxWidth()
+            .semantics { contentDescription = "Search receipts" }
+            .onFocusChanged { focused = it.isFocused },
+        decorationBox = { inner ->
+            Row(
+                Modifier
+                    .height(52.dp)
+                    .clip(CircleShape)
+                    .background(k.surface)
+                    .border(ring, if (focused) k.accent else k.line, CircleShape)
+                    .padding(start = 18.dp, end = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(KeptIcons.Search, contentDescription = null, tint = k.muted, modifier = Modifier.size(20.dp))
+                Spacer(Modifier.width(10.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) Text("Search stores, items, serial numbers", style = MaterialTheme.typography.bodyMedium.copy(fontSize = MaterialTheme.typography.titleSmall.fontSize), color = k.muted, maxLines = 1)
+                    inner()
+                }
+                AnimatedVisibility(query.isNotEmpty(), enter = fadeIn() + scaleIn(initialScale = 0.6f), exit = fadeOut()) {
+                    IconButton(onClick = { onChange("") }) {
+                        Icon(KeptIcons.Close, contentDescription = "Clear search", tint = k.muted, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+        },
+    )
+}
+
+@Composable
+private fun FilterControl(selected: HomeFilter, counts: Triple<Int, Int, Int>, onSelect: (HomeFilter) -> Unit, modifier: Modifier = Modifier) {
+    val k = Kept.colors
+    val options = listOf(HomeFilter.ALL to "All", HomeFilter.RETURNS to "Returns", HomeFilter.WARRANTIES to "Warranties")
+    val countFor = mapOf(HomeFilter.ALL to counts.first, HomeFilter.RETURNS to counts.second, HomeFilter.WARRANTIES to counts.third)
+    BoxWithConstraints(
+        modifier
+            .fillMaxWidth()
+            .clip(CircleShape)
+            .background(k.ink.copy(alpha = 0.06f))
+            .padding(4.dp),
+    ) {
+        val segment = maxWidth / options.size
+        val x by animateDpAsState(segment * options.indexOfFirst { it.first == selected }, tween(450, easing = KeptMotion.Settle), label = "seg")
+        Box(
+            Modifier
+                .offset(x = x)
+                .width(segment)
+                .height(42.dp)
+                .clip(CircleShape)
+                .background(if (k.dark) Color(0xFF2C3036) else Color.White),
+        )
+        Row(Modifier.fillMaxWidth()) {
+            options.forEach { (f, label) ->
+                val on = f == selected
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .clip(CircleShape)
+                        .keptClickable(pressed = 0.96f, role = Role.Tab) { onSelect(f) }
+                        .semantics { this.selected = on },
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = if (on) k.ink else k.muted)
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        "${countFor[f]}",
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = MaterialTheme.typography.bodySmall.letterSpacing),
+                        color = if (on) k.accent else k.muted,
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(if (on) k.accentContainer else k.line)
+                            .padding(horizontal = 7.dp, vertical = 2.dp),
                     )
                 }
             }
@@ -168,84 +585,277 @@ fun HomeScreen(
     }
 }
 
-private fun <T> LazyListScope.section(title: String, rows: List<T>, row: @Composable (T) -> Unit) {
-    if (rows.isEmpty()) return
-    item(key = "header-$title") {
-        Text(
-            title,
-            style = MaterialTheme.typography.titleSmall,
-            color = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.padding(top = 16.dp, bottom = 4.dp).semantics { heading() },
-        )
-    }
-    items(rows) { row(it) }
-}
-
-private val SHORT_DATE: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.MEDIUM)
-private val SPOKEN_DATE: DateTimeFormatter = DateTimeFormatter.ofLocalizedDate(FormatStyle.FULL)
+private fun rowShape(first: Boolean, last: Boolean) = RoundedCornerShape(
+    topStart = if (first) 24.dp else 0.dp,
+    topEnd = if (first) 24.dp else 0.dp,
+    bottomStart = if (last) 24.dp else 0.dp,
+    bottomEnd = if (last) 24.dp else 0.dp,
+)
 
 @Composable
-private fun DeadlineItem(row: DeadlineRow, due: LocalDate, label: String, today: LocalDate, onClick: () -> Unit) {
-    val days = ChronoUnit.DAYS.between(today, due)
-    val pill = when (days) {
-        0L -> "Today"
-        1L -> "1 day"
-        else -> "$days days"
-    }
-    // TalkBack reads the whole row as one sentence.
-    val spoken = listOfNotNull(row.itemName, row.merchantName, "$label ${due.format(SPOKEN_DATE)}", "$pill left")
-        .joinToString(", ")
-    ListItem(
-        headlineContent = { Text(row.itemName, maxLines = 2) },
-        supportingContent = { Text(listOfNotNull(row.merchantName, "$label ${due.format(SHORT_DATE)}").joinToString(" · ")) },
-        trailingContent = { DeadlinePill(pill, urgent = days <= 3) },
-        modifier = Modifier
-            .clickable(onClick = onClick)
-            .semantics(mergeDescendants = true) { contentDescription = spoken },
-    )
+private fun RowContainer(first: Boolean, last: Boolean, modifier: Modifier, spoken: String?, onClick: () -> Unit, content: @Composable () -> Unit) {
+    val k = Kept.colors
+    val shape = rowShape(first, last)
+    Box(
+        modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(k.surface)
+            .drawBehind {
+                if (!first) drawLine(k.line, Offset(72.dp.toPx(), 0f), Offset(size.width - 16.dp.toPx(), 0f), 1.dp.toPx())
+            }
+            .keptClickable(pressed = 0.985f, onClick = onClick)
+            .then(if (spoken != null) Modifier.semantics(mergeDescendants = true) { contentDescription = spoken } else Modifier)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) { content() }
 }
 
 @Composable
-private fun DeadlinePill(text: String, urgent: Boolean) {
-    Surface(
-        shape = MaterialTheme.shapes.small,
-        color = if (urgent) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.secondaryContainer,
+private fun DeadlineRowItem(
+    row: HomeRow,
+    today: LocalDate,
+    first: Boolean,
+    last: Boolean,
+    animateBar: Boolean,
+    barDelay: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val k = Kept.colors
+    val spoken = listOfNotNull(
+        row.name,
+        row.merchant,
+        row.label,
+        row.daysLeft?.let { if (it <= 0) "last day today" else "${daysLabel(it)} left" },
+    ).joinToString(", ")
+    RowContainer(first, last, modifier, spoken, onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconTile(KeptIcons.forCategory(row.category))
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(row.name, style = MaterialTheme.typography.titleSmall, color = k.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(
+                    // The date first: it's what matters, and the store name is the part that can be cut off.
+                    listOfNotNull(row.label, row.merchant).joinToString(" · "),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = k.muted,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 3.dp),
+                )
+                row.windowUsed?.let { WindowBar(it, row.soon, animateBar, barDelay) }
+            }
+            row.daysLeft?.let {
+                Spacer(Modifier.width(10.dp))
+                DaysPill(daysLabel(it), row.soon)
+            }
+        }
+    }
+}
+
+/** Thin bar: how much of the return or warranty window has already gone. */
+@Composable
+private fun WindowBar(used: Float, soon: Boolean, animate: Boolean, index: Int) {
+    val k = Kept.colors
+    val grow = remember { Animatable(if (animate) 0f else 1f) }
+    LaunchedEffect(Unit) { if (animate) { delay(300L + index * 45L); grow.animateTo(1f, tween(1100, easing = KeptMotion.Settle)) } }
+    Box(
+        Modifier
+            .padding(top = 8.dp)
+            .fillMaxWidth()
+            .height(4.dp)
+            .clip(CircleShape)
+            .background(k.line),
     ) {
-        Text(
-            text,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+        Box(
+            Modifier
+                .fillMaxHeight()
+                .fillMaxWidth(used * grow.value)
+                .clip(CircleShape)
+                .background(if (soon) k.soon else k.accent),
         )
     }
 }
 
 @Composable
-private fun UnfinishedRow(receipt: ReceiptEntity, onClick: () -> Unit) {
-    val status = when (receipt.status) {
-        ReceiptStatus.DRAFT -> "Reading…"
-        else -> "Tap to check and save"
+private fun UnfinishedRow(receipt: ReceiptEntity, first: Boolean, last: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val k = Kept.colors
+    val reading = receipt.status == ReceiptStatus.DRAFT
+    RowContainer(first, last, modifier, null, onClick) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconTile(KeptIcons.Scan)
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(receipt.merchantName ?: "New receipt", style = MaterialTheme.typography.titleSmall, color = k.ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(if (reading) "Reading…" else "Tap to check and save", style = MaterialTheme.typography.bodySmall, color = k.muted, modifier = Modifier.padding(top = 3.dp))
+            }
+            if (!reading) {
+                Text(
+                    "Check",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = k.check,
+                    modifier = Modifier.clip(CircleShape).background(k.checkContainer).padding(horizontal = 11.dp, vertical = 6.dp),
+                )
+            }
+        }
     }
-    ListItem(
-        headlineContent = { Text(receipt.merchantName ?: "New receipt") },
-        supportingContent = { Text(status) },
-        modifier = Modifier.clickable(onClick = onClick),
-    )
 }
 
 @Composable
-private fun EmptyState(onScan: () -> Unit) {
+private fun EmptyState(onScan: () -> Unit, modifier: Modifier = Modifier) {
+    val k = Kept.colors
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 64.dp),
+        modifier
+            .fillMaxWidth()
+            .padding(top = 8.dp)
+            .clip(RoundedCornerShape(28.dp))
+            .background(k.surface)
+            .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Text("Never miss a return or warranty again.", style = MaterialTheme.typography.titleMedium, textAlign = TextAlign.Center)
-        Spacer(Modifier.height(8.dp))
+        IconTile(KeptIcons.ReturnArrow, size = 56.dp)
+        Text(
+            "Never miss a return or warranty again.",
+            style = MaterialTheme.typography.titleLarge,
+            color = k.ink,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 16.dp),
+        )
         Text(
             "Scan a receipt and Kept reminds you before the deadline. Your receipts stay on this phone.",
             style = MaterialTheme.typography.bodyMedium,
+            color = k.muted,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 8.dp),
         )
-        Spacer(Modifier.height(16.dp))
-        TextButton(onClick = onScan) { Text("Scan your first receipt") }
+        Text(
+            "Scan your first receipt",
+            style = MaterialTheme.typography.labelLarge,
+            color = k.accent,
+            modifier = Modifier
+                .padding(top = 16.dp)
+                .clip(CircleShape)
+                .background(k.accentContainer)
+                .keptClickable(onClick = onScan)
+                .padding(horizontal = 18.dp, vertical = 12.dp),
+        )
+    }
+}
+
+@Composable
+private fun ScanButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    val k = Kept.colors
+    val appear = remember { Animatable(0f) }
+    LaunchedEffect(Unit) { delay(400); appear.animateTo(1f, KeptMotion.pop()) }
+    Surface(
+        shape = CircleShape,
+        color = k.accent,
+        contentColor = k.onAccent,
+        shadowElevation = 10.dp,
+        modifier = modifier
+            .graphicsLayer {
+                alpha = appear.value.coerceIn(0f, 1f)
+                val s = 0.7f + 0.3f * appear.value
+                scaleX = s; scaleY = s
+                translationY = (1f - appear.value) * 40.dp.toPx()
+            }
+            .heightIn(min = 60.dp)
+            .clip(CircleShape)
+            .keptClickable(pressed = 0.93f, onClick = onClick),
+    ) {
+        Row(Modifier.padding(start = 22.dp, end = 26.dp, top = 18.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Icon(KeptIcons.Scan, contentDescription = null, modifier = Modifier.size(24.dp))
+            Spacer(Modifier.width(10.dp))
+            Text("Scan receipt", style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold))
+        }
+    }
+}
+
+@Composable
+private fun SettingsSheet(mode: ThemeMode, dark: Boolean, onMode: (ThemeMode) -> Unit, onDismiss: () -> Unit) {
+    val k = Kept.colors
+    val sheet = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheet,
+        containerColor = k.background,
+        contentColor = k.ink,
+        scrimColor = Color.Black.copy(alpha = 0.32f),
+    ) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+            Text("Settings", style = MaterialTheme.typography.headlineSmall, modifier = Modifier.padding(horizontal = 6.dp))
+            SectionLabel("Appearance", Modifier.padding(top = 20.dp))
+            Column(Modifier.clip(RoundedCornerShape(22.dp)).background(k.surface)) {
+                SwitchRow(
+                    icon = KeptIcons.Settings,
+                    title = "Match phone setting",
+                    subtitle = "Light or dark with the rest of your phone",
+                    checked = mode == ThemeMode.SYSTEM,
+                    onChange = { on -> onMode(if (on) ThemeMode.SYSTEM else if (dark) ThemeMode.DARK else ThemeMode.LIGHT) },
+                )
+                Box(Modifier.padding(horizontal = 16.dp).fillMaxWidth().height(1.dp).background(k.line))
+                SwitchRow(
+                    icon = KeptIcons.Moon,
+                    title = "Dark mode",
+                    subtitle = if (mode == ThemeMode.SYSTEM) "Following your phone: ${if (dark) "on" else "off"}" else if (dark) "On" else "Off",
+                    checked = dark,
+                    onChange = { on -> onMode(if (on) ThemeMode.DARK else ThemeMode.LIGHT) },
+                )
+            }
+            Row(Modifier.padding(top = 18.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0F6E56)), contentAlignment = Alignment.Center) {
+                    Image(
+                        painterResource(R.drawable.ic_launcher_foreground),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.requiredSize(60.dp),
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                Column {
+                    Text("Kept · version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelLarge, color = k.ink)
+                    Text("Your receipts stay on this phone.", style = MaterialTheme.typography.bodySmall, color = k.muted)
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SwitchRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onChange: (Boolean) -> Unit,
+) {
+    val k = Kept.colors
+    Row(
+        Modifier
+            .fillMaxWidth()
+            .keptClickable(pressed = 0.98f, role = Role.Switch) { onChange(!checked) }
+            .semantics(mergeDescendants = true) { stateDescription = if (checked) "On" else "Off" }
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        IconTile(icon, size = 40.dp)
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, color = k.ink)
+            Text(subtitle, style = MaterialTheme.typography.bodySmall, color = k.muted, modifier = Modifier.padding(top = 1.dp))
+        }
+        Switch(
+            checked = checked,
+            onCheckedChange = null,
+            thumbContent = if (checked) ({ Icon(KeptIcons.Check, contentDescription = null, modifier = Modifier.size(16.dp)) }) else null,
+            colors = SwitchDefaults.colors(
+                checkedTrackColor = k.accent,
+                checkedThumbColor = k.onAccent,
+                checkedIconColor = k.accent,
+                uncheckedTrackColor = k.surface2,
+                uncheckedThumbColor = k.muted,
+                uncheckedBorderColor = k.lineStrong,
+            ),
+        )
     }
 }
