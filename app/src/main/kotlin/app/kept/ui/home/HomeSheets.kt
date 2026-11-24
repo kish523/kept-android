@@ -60,6 +60,7 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.AnnotatedString
@@ -400,6 +401,30 @@ fun SettingsContent(viewModel: HomeViewModel, mode: ThemeMode, dark: Boolean, on
                     Text("Free and open source. Your receipts stay on this phone.", style = MaterialTheme.typography.bodySmall, color = k.muted)
                 }
             }
+
+            // Credit to Kept's creator. Tapping it opens their GitHub profile.
+            Text(
+                buildAnnotatedString {
+                    append("Made with care by ")
+                    pushStyle(SpanStyle(color = k.accent, fontWeight = FontWeight.Bold))
+                    append("Kishara Ransara")
+                    pop()
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = k.muted,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 20.dp)
+                    .clip(CircleShape)
+                    .keptClickable(pressed = 0.97f, role = Role.Button) {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/kish523")))
+                        }
+                    }
+                    .semantics { contentDescription = "Made by Kishara Ransara. Opens their GitHub profile." }
+                    .padding(vertical = 12.dp),
+            )
         }
     }
 
