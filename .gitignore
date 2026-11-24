@@ -9,3 +9,6 @@ captures/
 *.keystore
 *.jks
 google-services.json
+
+# Test-build signing key (not a secret; see app/build.gradle.kts)
+!app/debug.keystore
