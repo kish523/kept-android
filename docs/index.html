@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kept – Free receipt, return and warranty reminder app for Android</title>
+<meta name="description" content="Never miss a return deadline or warranty again. Kept scans your receipts, works out when the return window closes and the warranty ends, and reminds you in time. Free, open source, and your receipts never leave your phone.">
+<link rel="canonical" href="https://kish523.github.io/kept-android/">
+<meta name="theme-color" content="#0F6E56">
+<link rel="icon" type="image/png" href="images/icon.png">
+<link rel="apple-touch-icon" href="images/icon.png">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Kept">
+<meta property="og:title" content="Kept – never miss a return or warranty again">
+<meta property="og:description" content="A free, private Android app that scans your receipts and reminds you before return windows close and warranties end. No account. Nothing leaves your phone.">
+<meta property="og:url" content="https://kish523.github.io/kept-android/">
+<meta property="og:image" content="https://kish523.github.io/kept-android/images/social.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Kept – never miss a return or warranty again">
+<meta name="twitter:description" content="Free, open-source Android app: scan receipts, get reminded before return deadlines and warranty expiry. Your receipts stay on your phone.">
+<meta name="twitter:image" content="https://kish523.github.io/kept-android/images/social.png">
+
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "SoftwareApplication",
+  "name": "Kept",
+  "alternateName": "Kept – receipt, return and warranty reminders",
+  "description": "Scans receipts on your phone, works out return deadlines and warranty end dates, and reminds you before they pass. Free, open source, no account, and receipts never leave the phone.",
+  "applicationCategory": "FinanceApplication",
+  "applicationSubCategory": "Receipt and warranty tracker",
+  "operatingSystem": "Android 8.0 or later",
+  "url": "https://kish523.github.io/kept-android/",
+  "downloadUrl": "https://github.com/kish523/kept-android/releases/latest",
+  "installUrl": "https://github.com/kish523/kept-android/releases/latest",
+  "image": "https://kish523.github.io/kept-android/images/social.png",
+  "screenshot": "https://kish523.github.io/kept-android/images/home.png",
+  "isAccessibleForFree": true,
+  "license": "https://www.apache.org/licenses/LICENSE-2.0",
+  "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+  "author": { "@type": "Person", "name": "Kishara Ransara", "url": "https://github.com/kish523" }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  "mainEntity": [
+    { "@type": "Question", "name": "Is Kept really free?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Yes. Kept is free and open source under the Apache License 2.0: no ads, no subscription, no in-app purchases, and no data to sell." } },
+    { "@type": "Question", "name": "Do my receipts leave my phone?",
+      "acceptedAnswer": { "@type": "Answer", "text": "No. Kept has no account and no servers. Receipts are read on your phone and stored only on your phone, and Kept opts out of Google Drive backup. The only network request Kept makes itself is checking GitHub for app updates." } },
+    { "@type": "Question", "name": "How does Kept know my return deadline?",
+      "acceptedAnswer": { "@type": "Answer", "text": "It reads the return policy printed on the receipt when there is one, uses the store's known policy otherwise, or asks you with one-tap choices like 14, 30 or 90 days. You can always change it." } },
+    { "@type": "Question", "name": "When does Kept remind me?",
+      "acceptedAnswer": { "@type": "Answer", "text": "At 9:00 on the 7th, 3rd and last day before a return window closes, and 30 and 7 days before a warranty ends. Answer from the notification: Keeping it, Returned it, or Remind me tomorrow." } },
+    { "@type": "Question", "name": "Is Kept on the Google Play Store or iPhone?",
+      "acceptedAnswer": { "@type": "Answer", "text": "Kept is for Android 8.0 and later and is installed from its GitHub releases page for now. It updates itself once installed. There is no iPhone version yet." } }
+  ]
+}
+</script>
+
+<style>
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 400; font-display: swap; src: url(fonts/plus_jakarta_sans_regular.woff2) format("woff2"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 600; font-display: swap; src: url(fonts/plus_jakarta_sans_semibold.woff2) format("woff2"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 700; font-display: swap; src: url(fonts/plus_jakarta_sans_bold.woff2) format("woff2"); }
+@font-face { font-family: "Plus Jakarta Sans"; font-weight: 800; font-display: swap; src: url(fonts/plus_jakarta_sans_extrabold.woff2) format("woff2"); }
+
+:root {
+  --bg: #F5F4F0; --surface: #FFFFFF; --surface2: #ECEAE4; --ink: #16181C; --muted: #5D626A;
+  --line: rgba(22,24,28,.08); --accent: #0F6E56; --on-accent: #FFFFFF; --accent-soft: #E0ECE9;
+  --coral: #B4410F; --coral-soft: #FCE9DE; --hero: #16181C; --hero-ink: #F5F4F0;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0F1012; --surface: #1A1C20; --surface2: #24272C; --ink: #EDEEF0; --muted: #A3A8B0;
+    --line: rgba(255,255,255,.08); --accent: #7CC9AE; --on-accent: #0F1012; --accent-soft: #283434;
+    --coral: #FFB088; --coral-soft: #3A2219; --hero: #202328; --hero-ink: #EDEEF0;
+  }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font: 400 17px/1.6 "Plus Jakarta Sans", system-ui, -apple-system, "Segoe UI", sans-serif; }
+a { color: var(--accent); }
+a:focus-visible, .button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+h1, h2, h3 { line-height: 1.15; letter-spacing: -0.02em; margin: 0; }
+h1 { font-size: clamp(36px, 6vw, 60px); font-weight: 800; letter-spacing: -0.035em; }
+h2 { font-size: clamp(28px, 4vw, 40px); font-weight: 800; }
+h3 { font-size: 19px; font-weight: 700; }
+p { margin: 0; }
+.muted { color: var(--muted); }
+
+header.top { display: flex; align-items: center; justify-content: space-between; padding: 18px 0; }
+.brand { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 20px; color: var(--ink); text-decoration: none; }
+.brand img { width: 36px; height: 36px; border-radius: 10px; }
+.top nav a { color: var(--muted); text-decoration: none; font-weight: 600; margin-left: 18px; font-size: 15px; }
+.top nav a:hover { color: var(--ink); }
+
+.hero { position: relative; padding: 40px 0 56px; overflow: hidden; }
+.hero::before, .hero::after { content: ""; position: absolute; border-radius: 50%; filter: blur(70px); opacity: .35; z-index: -1; }
+.hero::before { width: 420px; height: 420px; right: -80px; top: -40px; background: var(--accent); }
+.hero::after { width: 320px; height: 320px; left: -100px; top: 200px; background: #FF9F6E; }
+.hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }
+.hero p.lead { font-size: 20px; color: var(--muted); margin-top: 18px; max-width: 34em; }
+.cta { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; margin-top: 28px; }
+.button { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: var(--on-accent); text-decoration: none; font-weight: 700; padding: 16px 26px; border-radius: 999px; font-size: 17px; box-shadow: 0 12px 28px -12px rgba(15,110,86,.7); }
+.button svg { width: 20px; height: 20px; }
+.ghost { color: var(--ink); font-weight: 700; text-decoration: none; padding: 16px 10px; }
+.chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; padding: 0; list-style: none; }
+.chips li { font-size: 14px; font-weight: 600; padding: 6px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--line); }
+picture { display: grid; justify-items: center; }
+.phone { width: 100%; height: auto; max-width: 320px; border-radius: 34px; box-shadow: 0 30px 60px -24px rgba(0,0,0,.35), 0 0 0 1px var(--line); justify-self: center; }
+
+section { padding: 64px 0; }
+.section-head { max-width: 40em; margin-bottom: 32px; }
+.section-head p { margin-top: 12px; font-size: 18px; color: var(--muted); }
+
+.steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; padding: 0; margin: 0; list-style: none; counter-reset: step; }
+.card { background: var(--surface); border-radius: 24px; padding: 24px; border: 1px solid var(--line); }
+.steps .card::before { counter-increment: step; content: counter(step); display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px; background: var(--accent-soft); color: var(--accent); font-weight: 800; margin-bottom: 14px; }
+.card p { margin-top: 8px; color: var(--muted); }
+
+.shots { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 18px; }
+.shots img { width: 100%; height: auto; border-radius: 22px; border: 1px solid var(--line); }
+
+.privacy { background: var(--hero); color: var(--hero-ink); border-radius: 32px; padding: 44px; }
+.privacy .section-head p { color: color-mix(in srgb, var(--hero-ink) 75%, transparent); }
+.points { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; padding: 0; margin: 0; list-style: none; }
+.points li { padding-left: 30px; position: relative; color: color-mix(in srgb, var(--hero-ink) 82%, transparent); }
+.points li::before { content: ""; position: absolute; left: 0; top: 7px; width: 16px; height: 16px; border-radius: 50%; background: #5FD3A8; -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.5 14.5-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4-7 7z'/%3E%3C/svg%3E") center/contain no-repeat; mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20zm-1.5 14.5-4-4 1.4-1.4 2.6 2.6 5.6-5.6 1.4 1.4-7 7z'/%3E%3C/svg%3E") center/contain no-repeat; }
+.points b { color: var(--hero-ink); }
+.privacy a { color: #5FD3A8; }
+
+.install { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.install ol { margin: 10px 0 0; padding-left: 20px; color: var(--muted); }
+.install li + li { margin-top: 6px; }
+
+details { background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 18px 22px; }
+details + details { margin-top: 10px; }
+summary { cursor: pointer; font-weight: 700; font-size: 18px; list-style-position: outside; }
+details p { margin-top: 10px; color: var(--muted); }
+
+footer { padding: 40px 0 56px; color: var(--muted); font-size: 15px; display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; border-top: 1px solid var(--line); }
+footer a { color: var(--muted); }
+
+@media (max-width: 860px) {
+  .hero-grid { grid-template-columns: 1fr; }
+  .phone { max-width: 300px; }
+  .steps, .points, .install { grid-template-columns: 1fr; }
+  .shots { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .privacy { padding: 28px 22px; border-radius: 26px; }
+  .top nav { display: none; }
+  section { padding: 44px 0; }
+}
+@media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <a class="brand" href="./"><img src="images/icon.png" alt="" width="36" height="36">Kept</a>
+    <nav aria-label="Sections">
+      <a href="#how">How it works</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">Questions</a>
+      <a href="https://github.com/kish523/kept-android">GitHub</a>
+    </nav>
+  </header>
+</div>
+
+<main>
+  <div class="hero">
+    <div class="wrap hero-grid">
+      <div>
+        <h1>Never miss a return or warranty again.</h1>
+        <p class="lead">Kept is a free Android app that scans your receipts, works out when the return window closes and when the warranty ends, and reminds you in time. Your receipts never leave your phone.</p>
+        <div class="cta">
+          <a class="button" href="https://github.com/kish523/kept-android/releases/latest">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+            Download for Android
+          </a>
+          <a class="ghost" href="#how">See how it works →</a>
+        </div>
+        <ul class="chips" aria-label="At a glance">
+          <li>Free</li><li>Open source</li><li>No account</li><li>No ads</li><li>Android 8.0+</li>
+        </ul>
+      </div>
+      <picture>
+        <source srcset="images/home-dark.png" media="(prefers-color-scheme: dark)">
+        <img class="phone" src="images/home.png" width="540" height="1171" alt="Kept's home screen: the next deadline with a countdown ring, then returns closing soon, each with days left">
+      </picture>
+    </div>
+  </div>
+
+  <section id="how">
+    <div class="wrap">
+      <div class="section-head">
+        <h2>A receipt scanner that remembers deadlines for you</h2>
+        <p>Return windows and warranties are easy to forget and expensive to miss. Kept keeps track so you don't have to.</p>
+      </div>
+      <ol class="steps">
+        <li class="card"><h3>Scan the receipt</h3><p>Point your camera at it, or share a photo or a PDF order confirmation to Kept. The edges are found for you.</p></li>
+        <li class="card"><h3>Check it in a tap</h3><p>Kept reads the store, date, total and items on your phone, and works out the return window and warranty. Anything it isn't sure about is highlighted.</p></li>
+        <li class="card"><h3>Get reminded in time</h3><p>Reminders 7, 3 and 1 day before a return window closes, and 30 and 7 days before a warranty ends. Answer straight from the notification.</p></li>
+      </ol>
+    </div>
+  </section>
+
+  <section aria-labelledby="look">
+    <div class="wrap">
+      <div class="section-head"><h2 id="look">Clean, calm, and quick to use</h2><p>Home always shows what's next. Search by store, item or serial number, swipe away receipts you're done with, and switch between light and dark.</p></div>
+      <div class="shots">
+        <img src="images/home.png" width="540" height="1171" loading="lazy" alt="Home screen with the next return deadline and a list of returns closing soon">
+        <img src="images/check.png" width="540" height="1171" loading="lazy" alt="Checking a scanned receipt, with the total highlighted to double-check">
+        <img src="images/home-dark.png" width="540" height="1171" loading="lazy" alt="Home screen in dark mode">
+        <img src="images/settings.png" width="540" height="1171" loading="lazy" alt="Settings: reminders, light and dark mode, updates and storage clean-up">
+      </div>
+    </div>
+  </section>
+
+  <section id="privacy">
+    <div class="wrap">
+      <div class="privacy">
+        <div class="section-head">
+          <h2>Your receipts stay on your phone</h2>
+          <p>Receipts say a lot about you: where you shop, what you buy, how much you spend. Kept is built so that stays yours.</p>
+        </div>
+        <ul class="points">
+          <li><b>No account.</b> Nothing to sign up for. No email, no password, no profile.</li>
+          <li><b>No servers.</b> Kept has no backend, so there's nowhere for your receipts to go.</li>
+          <li><b>Read on your phone.</b> Photos are read on the device and never uploaded.</li>
+          <li><b>No cloud copy.</b> Kept opts out of Google Drive backup.</li>
+          <li><b>Card numbers masked</b> the moment they're read. Only the last four digits are kept.</li>
+          <li><b>Free, with no ads</b> and no analytics or trackers of our own.</li>
+          <li><b>Open source.</b> Anyone can read exactly how Kept treats your data.</li>
+          <li><b>This website is private too:</b> no cookies, no analytics, nothing loaded from other sites.</li>
+        </ul>
+        <p style="margin-top:24px"><a href="https://github.com/kish523/kept-android#exactly-what-goes-over-the-internet">See exactly what goes over the internet, and every permission Kept asks for →</a></p>
+      </div>
+    </div>
+  </section>
+
+  <section id="install">
+    <div class="wrap">
+      <div class="section-head"><h2>Install Kept on Android</h2><p>Kept isn't on the Play Store yet, so you install it straight from its releases page. It takes a minute, and after that it updates itself.</p></div>
+      <div class="install">
+        <div class="card">
+          <h3>Install</h3>
+          <ol>
+            <li>Open the <a href="https://github.com/kish523/kept-android/releases/latest">latest release</a> on your phone and tap the <code>.apk</code> file under <b>Assets</b>.</li>
+            <li>Open the download. If Android asks, allow your browser to install apps.</li>
+            <li>Tap <b>Install</b>, open Kept, and scan your first receipt.</li>
+          </ol>
+        </div>
+        <div class="card">
+          <h3>Updates are automatic</h3>
+          <p>Kept checks once a day and installs new versions by itself on Android 12 and later. On Android 8 to 11 it downloads the update and Android asks you to tap Install. Google Play Protect may call Kept an unrecognised app, because it isn't on the Play Store; its code is public for anyone to check.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="faq">
+    <div class="wrap">
+      <div class="section-head"><h2>Questions</h2></div>
+      <details><summary>Is Kept really free?</summary><p>Yes. Kept is free and open source under the Apache License 2.0: no ads, no subscription, no in-app purchases, and no data to sell.</p></details>
+      <details><summary>Do my receipts leave my phone?</summary><p>No. Kept has no account and no servers. Receipts are read and stored only on your phone, and Kept opts out of Google Drive backup. The only network request Kept makes itself is checking GitHub for app updates. Google's on-device text reader sends Google anonymous usage statistics about itself, never your photos or their text.</p></details>
+      <details><summary>How does Kept know my return deadline?</summary><p>It reads the return policy printed on the receipt when there is one, uses the store's known policy otherwise, or asks you with one-tap choices like 14, 30 or 90 days. You can always change it.</p></details>
+      <details><summary>When does Kept remind me?</summary><p>At 9:00 on the 7th, 3rd and last day before a return window closes, and 30 and 7 days before a warranty ends. Answer from the notification: Keeping it, Returned it, or Remind me tomorrow.</p></details>
+      <details><summary>What if I lose my phone?</summary><p>Your receipts are only on your phone, so they'd go with it. That's the price of keeping them out of the cloud. Moving to a new phone with Android's phone-to-phone transfer keeps everything, and an encrypted backup file you keep yourself is planned.</p></details>
+      <details><summary>Is there an iPhone version?</summary><p>Not yet. Kept is for Android 8.0 and later.</p></details>
+    </div>
+  </section>
+</main>
+
+<div class="wrap">
+  <footer>
+    <span>Made with care by <a href="https://github.com/kish523">Kishara Ransara</a> · Free and open source (<a href="https://github.com/kish523/kept-android/blob/main/LICENSE">Apache 2.0</a>)</span>
+    <span><a href="https://github.com/kish523/kept-android">Code on GitHub</a> · <a href="https://github.com/kish523/kept-android/issues">Report a problem</a></span>
+  </footer>
+</div>
+</body>
+</html>

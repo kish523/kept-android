@@ -3,6 +3,11 @@ name: Build Kept
 on:
   push:
     branches: [main]
+    # Website and page-text changes don't change the app: don't publish a new build for them
+    # (every phone would download an identical update).
+    paths-ignore:
+      - "docs/**"
+      - "README.md"
   workflow_dispatch:
 
 permissions:

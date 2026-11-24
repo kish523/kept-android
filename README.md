@@ -10,6 +10,7 @@ and reminds you in time. Your receipts never leave your phone.</p>
 
 <p align="center">
   <a href="https://github.com/kish523/kept-android/releases/latest"><b>Download Kept for Android</b></a>
+  · <a href="https://kish523.github.io/kept-android/">Website</a>
   · Free and open source · Android 8.0 or later
 </p>
 

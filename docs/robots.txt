@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://kish523.github.io/kept-android/sitemap.xml

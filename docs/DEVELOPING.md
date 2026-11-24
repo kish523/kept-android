@@ -31,6 +31,14 @@ Every push to `main` runs `.github/workflows/ci.yml` on GitHub Actions:
    tagged `v<version>-build-<N>`. The run number N is the build number (`versionCode`), so every
    build is newer than the last; the in-app updater compares it.
 
+### Website
+
+`docs/` is the public website (GitHub Pages: **Settings › Pages › Deploy from a branch › main ›
+/docs**), served at https://kish523.github.io/kept-android/. It's plain HTML with self-hosted fonts:
+no cookies, no analytics, nothing loaded from other sites. `robots.txt` and `sitemap.xml` are for
+search engines; `images/social.png` is the link preview. Changes under `docs/` and to `README.md`
+don't trigger a new app build.
+
 ### The release key (one-time setup)
 
 Every published build must be signed with the same key, or phones refuse the update. The key lives
