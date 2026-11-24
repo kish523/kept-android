@@ -21,6 +21,18 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    signingConfigs {
+        // A fixed debug key, so every test build installs over the previous one and keeps your receipts.
+        // (CI runners would otherwise make a new random key per run, and Android refuses that update.)
+        // This is only for test builds; a Play Store release gets its own private key.
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = true

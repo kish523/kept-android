@@ -27,7 +27,8 @@ Every push to `main` runs `.github/workflows/ci.yml` on GitHub Actions:
 2. writes the result to the **`ci-logs`** branch (`status.txt`, `summary.txt`, `tail.txt`,
    `build-log.txt`) so errors can be read without the Actions screen;
 3. if the build passes, publishes a **Release** named "Kept 0.2.0 (test build N)" with the `.apk` attached.
-   Open the release on your phone, tap the `.apk`, and install it.
+   Open the release on your phone, tap the `.apk`, and install it. Builds are signed with the
+   committed `app/debug.keystore`, so each one installs over the last and keeps your data.
 
 The Gradle wrapper jar isn't in the repository (it's binary). CI uses Gradle 8.14.3 directly, and
 Android Studio reads `gradle/wrapper/gradle-wrapper.properties`. To add the wrapper scripts back on

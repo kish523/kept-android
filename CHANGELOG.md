@@ -35,6 +35,8 @@
   and a test that runs it against the exported v1 schema.
 - Re-saving an edited receipt keeps what you'd already decided (kept, returned).
 - The document scanner starts when you tap Scan, not when Home opens.
+- Test builds are now signed with one fixed key, so each new build installs over the last and keeps
+  your receipts. **Coming from 0.1.0: uninstall it once first** (it was signed with a throwaway key).
 
 Reminders still don't fire yet: that's the next release.
 
