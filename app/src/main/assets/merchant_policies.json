@@ -1,0 +1,21 @@
+{
+  "_comment": "Sample entries with made-up stores. Replace with researched policies for your launch markets before release, and keep asOf current.",
+  "policies": [
+    {
+      "name": "VoltMart Electronics",
+      "aliases": ["VoltMart"],
+      "returnDays": 30,
+      "categoryReturnDays": { "ELECTRONICS": 15 },
+      "asOf": "2026-11-01",
+      "returnsUrl": null
+    },
+    {
+      "name": "Lanka Home Centre",
+      "aliases": [],
+      "returnDays": null,
+      "categoryReturnDays": {},
+      "asOf": "2026-11-01",
+      "returnsUrl": null
+    }
+  ]
+}

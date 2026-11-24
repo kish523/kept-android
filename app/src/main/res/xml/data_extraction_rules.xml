@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Android 12+. Cloud backup keeps the database and settings; receipt images are too large for
+     Auto Backup's quota and go in the encrypted .keptbackup file instead. Phone-to-phone transfer
+     copies everything. When vault encryption ships, exclude the database here too: Keystore keys
+     don't move to a new phone, so an encrypted database restored without its key is unreadable. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <include domain="database" path="." />
+        <include domain="sharedpref" path="." />
+    </cloud-backup>
+    <device-transfer>
+        <include domain="database" path="." />
+        <include domain="sharedpref" path="." />
+        <include domain="file" path="receipts/" />
+    </device-transfer>
+</data-extraction-rules>
