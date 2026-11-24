@@ -1,0 +1,9 @@
+config=GBP,DMY
+merchant=Greenleaf Grocers
+date=2026-04-03
+currency=GBP
+total=12.79
+tax=0.92
+last4=8812
+category=GROCERIES
+items=5

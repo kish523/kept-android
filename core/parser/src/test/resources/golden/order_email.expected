@@ -1,0 +1,12 @@
+config=USD,MDY
+merchant=Northwind Home Store
+date=2026-11-20
+currency=USD
+total=176.29
+subtotal=162.48
+tax=13.81
+last4=2047
+order=112-4456789-1234567
+return=date:2026-12-28
+category=APPLIANCES
+items=2

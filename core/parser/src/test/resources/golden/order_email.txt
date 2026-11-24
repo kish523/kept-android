@@ -1,0 +1,20 @@
+Your order has been placed!
+Thank you for your order, Ama.
+Order #: 112-4456789-1234567
+Order date: November 20, 2026
+
+Items in this order
+Philips Air Fryer XL HD9270
+Qty: 1   $149.99
+Silicone Liner Pack (2)
+Qty: 1   $12.49
+
+Item subtotal: $162.48
+Shipping: $0.00
+Estimated tax: $13.81
+Order total: $176.29
+
+Paid with Mastercard ending in 2047
+Estimated delivery: Nov 26 - Nov 28
+Return window closes Dec 28, 2026
+Sold by Northwind Home Store

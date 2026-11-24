@@ -1,0 +1,14 @@
+config=USD,MDY
+merchant=Voltmart Electronics
+date=2026-11-12
+currency=USD
+total=530.44
+subtotal=484.97
+tax=45.47
+last4=4417
+order=0412-03-5521
+serial=5103388821
+return=days:15
+warranty=months:12
+category=ELECTRONICS
+items=3

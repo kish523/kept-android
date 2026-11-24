@@ -1,0 +1,9 @@
+config=EUR,DMY
+merchant=Librairie Du Pont
+date=2026-11-15
+currency=EUR
+total=23.20
+tax=0.67
+order=000318
+return=days:30
+items=3
