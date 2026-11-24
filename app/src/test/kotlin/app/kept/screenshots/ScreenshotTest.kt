@@ -117,6 +117,7 @@ class ScreenshotTest {
     @Test fun home_dark() = home(true)
     @Test fun review_light() = review(false)
     @Test fun review_dark() = review(true)
+    @Config(qualifiers = "w392dp-h1300dp-xxhdpi") // tall enough for the whole sheet
     @Test fun settings() = sheet("settings") { vm ->
         SettingsContent(vm, ThemeMode.SYSTEM, dark = false, onDismiss = {})
     }

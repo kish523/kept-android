@@ -30,7 +30,7 @@
 - Kept no longer copies your receipts to Google Drive backup. Moving to a new phone with Android's
   phone-to-phone transfer still brings them along.
 - Kept is now a signed release build, so its data can't be read out over a USB cable.
-- All of Kept's code is public, so anyone can check how it treats your data.
+- Kept is now free and open source (Apache License 2.0), so anyone can check how it treats your data.
 
 ## 0.2.0: the redesign
 

@@ -10,7 +10,7 @@ and reminds you in time. Your receipts never leave your phone.</p>
 
 <p align="center">
   <a href="https://github.com/kish523/kept-android/releases/latest"><b>Download Kept for Android</b></a>
-  · Android 8.0 or later
+  · Free and open source · Android 8.0 or later
 </p>
 
 <p align="center">
@@ -47,10 +47,12 @@ that stays yours.
   Android's phone-to-phone transfer still brings your receipts along.
 - **Card numbers masked.** If a full card number is printed on a receipt, Kept masks it the moment
   it's read and keeps only the last four digits.
-- **No ads, and no analytics or trackers of our own.**
+- **Free, with no ads, and no analytics or trackers of our own.** Kept doesn't make money from you
+  or your data. There's no paid tier and nothing to buy.
 - **Locked down.** Published versions are signed release builds, so Kept's data can't be read out
   over a USB cable.
-- **Check it yourself.** All of Kept's code is public, right here.
+- **Open source, so you can check it.** Every line of Kept is here, under the Apache 2.0 licence.
+  Anyone can read how it treats your data, build it themselves, or improve it.
 
 ### Exactly what goes over the internet
 
@@ -85,7 +87,7 @@ photos, files or microphone.
 3. Tap **Install**, open Kept, and scan your first receipt.
 
 Google Play Protect may say Kept is from an unrecognised developer. That's because Kept isn't on the
-Play Store; you can install it anyway, and all of its code is public.
+Play Store; you can install it anyway, and all of its code is open for anyone to check.
 
 **Updates are automatic.** Kept checks once a day and downloads new versions by itself.
 
@@ -98,6 +100,9 @@ Play Store; you can install it anyway, and all of its code is public.
 After each update, Kept shows what's new.
 
 ## Questions
+
+**Is it really free?** Yes. Kept is free and open source: no ads, no subscription, no in-app
+purchases, and no data to sell.
 
 **Is Kept on the Play Store?** Not yet. Install it from this page for now.
 
@@ -113,6 +118,10 @@ If one doesn't read well, you can fix the fields in a tap, and please
 
 **Found a problem or have an idea?** [Open an issue](https://github.com/kish523/kept-android/issues).
 
----
+## Open source
+
+Kept is free and open source under the [Apache License 2.0](LICENSE). You're welcome to read the code,
+build it yourself, and send improvements. Ideas and bug reports go in
+[Issues](https://github.com/kish523/kept-android/issues).
 
 Building Kept yourself? See [docs/DEVELOPING.md](docs/DEVELOPING.md).

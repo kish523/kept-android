@@ -375,6 +375,21 @@ fun SettingsContent(viewModel: HomeViewModel, mode: ThemeMode, dark: Boolean, on
                 )
             }
 
+            SectionLabel("About", Modifier.padding(top = 20.dp))
+            Group {
+                ActionRow(
+                    icon = KeptIcons.Shield,
+                    title = "Free and open source",
+                    subtitle = "Apache License 2.0. Anyone can read how Kept treats your data.",
+                    action = "Code",
+                    onClick = {
+                        runCatching {
+                            context.startActivity(Intent(Intent.ACTION_VIEW, android.net.Uri.parse("https://github.com/kish523/kept-android")))
+                        }
+                    },
+                )
+            }
+
             Row(Modifier.padding(top = 18.dp, start = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF0F6E56)), contentAlignment = Alignment.Center) {
                     Image(painterResource(R.drawable.ic_launcher_foreground), contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.requiredSize(60.dp))
@@ -382,7 +397,7 @@ fun SettingsContent(viewModel: HomeViewModel, mode: ThemeMode, dark: Boolean, on
                 Spacer(Modifier.width(12.dp))
                 Column {
                     Text("Kept · version ${BuildConfig.VERSION_NAME}", style = MaterialTheme.typography.labelLarge, color = k.ink)
-                    Text("Your receipts stay on this phone.", style = MaterialTheme.typography.bodySmall, color = k.muted)
+                    Text("Free and open source. Your receipts stay on this phone.", style = MaterialTheme.typography.bodySmall, color = k.muted)
                 }
             }
         }

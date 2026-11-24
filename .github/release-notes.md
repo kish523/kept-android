@@ -1,6 +1,6 @@
 **Kept reminds you before a return window closes or a warranty runs out.** Snap a receipt and Kept does the rest.
 
-Your receipts stay on your phone: no account, no ads, no cloud copy, nothing to sign up for. [How Kept protects your privacy](https://github.com/kish523/kept-android#your-receipts-stay-on-your-phone)
+Free and open source. Your receipts stay on your phone: no account, no ads, no cloud copy, nothing to sign up for. [How Kept protects your privacy](https://github.com/kish523/kept-android#your-receipts-stay-on-your-phone)
 
 ## What's new in Kept __VERSION__
 

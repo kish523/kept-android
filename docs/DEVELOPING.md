@@ -156,4 +156,6 @@ The test fails below 90%, which is the roadmap's gate for the extraction phase.
 - Never add `fallbackToDestructiveMigration()` to the database: it deletes users' receipts.
   Every schema change gets a numbered migration and a test against the exported schema in
   `app/schemas/` (see `MigrationTest`). Bump `versionCode` with every release so phones upgrade in place.
+- Licence: Apache 2.0 (`LICENSE`, `NOTICE`). The app ships the licence texts it needs in
+  `app/src/main/assets/licenses/`.
 - Fonts: Plus Jakarta Sans, SIL Open Font License (`third_party/PlusJakartaSans-OFL.txt`).
