@@ -100,7 +100,8 @@ The test fails below 90%, which is the roadmap's gate for the extraction phase.
 - [ ] Export (ZIP / CSV / PDF), encrypted `.keptbackup`, delete-everything.
 - [ ] App Lock (BiometricPrompt), vault encryption (SQLCipher), secure window flag.
 - [ ] Gemini Nano tier via the ML Kit Prompt API on supported phones, checked by the rules parser.
-- [ ] App icon (**File → New → Image Asset** in Android Studio) and launch screen.
+- [x] App icon (adaptive, with a themed-icon layer: `res/drawable/ic_launcher_*.xml`).
+- [ ] Launch screen.
 - [ ] Real merchant return policies in `app/src/main/assets/merchant_policies.json`
       (the two entries there are made-up examples).
 
